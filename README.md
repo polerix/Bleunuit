@@ -4,13 +4,24 @@ An interactive 3D room, "Bleu Nuit Gallery". A 10-unit cubic room with navy floo
 blue side walls, a glitter-lettered BLEU NUIT sign on the back wall, a dotted carpet on the floor,
 and a translucent purple acrylic armchair in the middle.
 
-The carpet, the sign and the landscape paintings on the side walls are not image files.
-`index.html` draws all three at load time onto `<canvas>` elements and uses them as Three.js textures.
+The sign and the landscape paintings on the side walls are not image files: `index.html` draws
+them at load time onto `<canvas>` elements and uses them as Three.js textures. The carpet is the
+exception: it is a real image, `assets/carpet.png`, loaded at runtime.
 
 ## Running it
 
-It is one self-contained file with no build step, no package manager and no dependencies to install.
-Open `index.html` in a browser that supports WebGL.
+There is no build step and no package manager: `index.html` plus the `assets/` folder is the whole
+site. It needs a browser that supports WebGL, and it **must be served over HTTP**, not opened
+straight off disk.
+
+- **Live:** https://polerix.github.io/Bleunuit/ (GitHub Pages, from `main` at the repo root).
+- **Locally:** run `python3 -m http.server` in the repo folder and open http://localhost:8000/.
+
+**Why double-clicking `index.html` no longer works properly.** The sign and paintings are drawn in
+`<canvas>`, which is fine on `file://`. The carpet is a loaded PNG, and browsers treat a `file://`
+page as an opaque origin, so the WebGL texture is blocked (Chrome logs a CORS error). Nothing crashes:
+the carpet falls back to a flat periwinkle floor with no dots, and the rest of the room is
+unchanged. It is a non-issue on GitHub Pages or any local HTTP server.
 
 Three.js **r128** (cdnjs) and **Tailwind** (the Tailwind Play CDN, `cdn.tailwindcss.com`) are loaded
 from CDNs, so **it needs network access** the first time it loads. Offline it will not render.
@@ -44,12 +55,20 @@ are not loaded by the page.
 | File | What it is | Used to check |
 |---|---|---|
 | `reference/signage-bleu-nuit.png` | Photo of the real BLEU NUIT sign: purple glitter-filled block letters with a lighter violet outline, stacked BLEU over NUIT on near-black. 1600×1200. | `createBleuNuitTexture()`, the back wall. The letter outlines are traced from this photo |
-| `reference/carpet-pattern.png` | The carpet: light periwinkle dots in diagonal clusters on a deep royal blue ground. 1448×1086. | `createCarpetTexture()`, the floor carpet |
+| `reference/carpet-pattern.png` | An earlier carpet photo: light periwinkle dots in diagonal clusters on a deep royal blue ground. 1448×1086. **Superseded** by `assets/carpet.png` (see Recently closed). Kept for history. | Nothing now |
 | `reference/swatch-navy-dark.png` | Flat dark navy swatch, measured at about `#0f084f`. | Room surface colours |
 | `reference/swatch-indigo.png` | Flat indigo/violet swatch, measured at about `#261987`. | Room surface colours |
 
 For comparison, the code currently uses `0x110e52` for the floor and ceiling and `0x191475` for the
 side walls. Which swatch is meant for which surface is not recorded here.
+
+## Assets
+
+`assets/` holds files the page loads at runtime, unlike `reference/`, which is never loaded.
+
+| File | What it is |
+|---|---|
+| `assets/carpet.png` | The floor carpet: light periwinkle ground (`#8790c6`) with royal-blue dots (`#2c38ac`), about 28% dot coverage. 1448×1086 (4:3), 2.7 MB. Not seamless, so it is used once and not tiled (see below). |
 
 ## Known gaps
 
@@ -83,21 +102,26 @@ several field-of-view settings.
   metallic finish is ever wanted, it needs an environment map (`PMREMGenerator`) and the colours
   retuned against the target.
 
-- **The carpet colours are fixed, and the photo beat the mockup.** `createCarpetTexture()` used to
-  draw a light periwinkle ground with dark blue dots, the reverse of `reference/carpet-pattern.png`.
-  It now draws light periwinkle dots (`#7c88c4`) on a deep royal-blue ground (`#1f0287`), both the
-  median colours of the photo's dot and ground pixels. The dot layout is also taken from the photo:
-  it tiles every ~105.75 x ~109.85 px, and 18 circles measured from one cell (radii grown 8% to
-  match the photo's 29% dot coverage) are tiled as-is, giving the photo's short diagonal chains and
-  staggered rows. Checked against the photo at the same scale, the dot masks overlap by 0.85
-  (intersection over union). Dot cells are square and the texture repeats 1.5 x 1 over the 6.6 x 4.4
-  carpet so the dots stay round. The photo's cell is about 4% taller than wide, which is ignored.
+- **The carpet is the light-ground image, and the direction reversed twice.** The original code drew
+  a light periwinkle ground with dark blue dots, which is what the room mockup used as the target
+  shows. That was fixed once to match `reference/carpet-pattern.png`, a photo with light dots on a
+  deep royal-blue ground (commit `2859fd2`, a procedural texture built from the photo), on the basis
+  that the photo beat the mockup. PAUL-ERIC then supplied a finished, clean texture image with the
+  **light ground and blue dots**, i.e. back to the original direction and to what the mockup shows.
+  That image is the current, final carpet, so **`2859fd2`'s dark floor is superseded**: the photo is
+  no longer the carpet's authority, and the light floor is intended. Do not "fix" it back to the
+  dark version, and do not treat the photo-versus-mockup note that used to be here as current.
 
-  **The two references disagreed, and the photo won.** The room mockup used as the target for the
-  paintings shows a *light* carpet with darker dots, which is what the old code drew. The carpet
-  photo shows the reverse. PAUL-ERIC re-sent the photo as "the actual pattern of the carpet", so the
-  photo is authoritative and the mockup's light carpet is wrong. The floor is therefore darker than
-  in that mockup, on purpose. Do not flip it back to match the mockup.
+  It is loaded from `assets/carpet.png`, not generated, because the image is exact and it is a
+  finished asset. It loads asynchronously: the carpet material starts as flat periwinkle (`#8790c6`,
+  also what remains if the load fails), and the texture is assigned in the loader callback with
+  `needsUpdate` set, so there is no blank first paint. The image is **not seamless** (its wrap-around
+  edge differs about 5x more than adjacent pixels, and dots are cut off at the edges), so it is laid
+  over the carpet once with clamped wrapping, not repeated. It is 4:3 and the carpet is 3:2, so the
+  middle 8/9 of its width is used, which keeps the dots round at the image's own density (about 12
+  clusters across the carpet). Mipmaps and maximum anisotropy are on; no moiré or seam at 22°, 60° or
+  92°. On screen it reads greyer than the file (ground about `#9fa7c1` for `#8790c6`), because of the
+  room lighting and tone mapping.
 
 - **The BLEU NUIT lettering now matches the photo.** It was `Impact` / `Arial Black` text with a
   three-layer neon outline and thin random glitter. It is now eight letter outlines drawn as paths,

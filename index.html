@@ -153,66 +153,6 @@
       container.appendChild(renderer.domElement);
 
       
-      // 1. Procedural Carpet Texture (light periwinkle dots on a deep royal-blue ground)
-      // The dot layout is one repeating cell measured from reference/carpet-pattern.png. The photo
-      // tiles every ~105.75 x ~109.85 px, and 18 circles (x, y, radius, as fractions of the cell)
-      // reproduce its dot mask, which gives the short diagonal chains and staggered rows of the
-      // photo. Radii are grown 8% so dot coverage matches the photo's 29%. The cell is tiled as-is,
-      // not jittered. Colours are the medians of the photo's dot and ground pixels.
-      function createCarpetTexture() {
-        const canvas = document.createElement('canvas');
-        canvas.width = 1024;
-        canvas.height = 1024;
-        const ctx = canvas.getContext('2d');
-
-        // Deep royal blue ground
-        ctx.fillStyle = '#1f0287';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        const cells = 10;                    // repeats across the canvas (seamless: 10 whole cells)
-        const cell = canvas.width / cells;
-        const cellDots = [                   // [x, y, radius] as fractions of one cell
-          [0.0567, 0.9058, 0.0963],
-          [0.7423, 0.4096, 0.0932],
-          [0.2175, 0.0319, 0.0905],
-          [0.4161, 0.8967, 0.0825],
-          [0.3783, 0.4051, 0.0823],
-          [0.6005, 0.5143, 0.0793],
-          [0.6525, 0.7010, 0.0793],
-          [0.6430, 0.2094, 0.0780],
-          [0.8463, 0.0683, 0.0766],
-          [0.1229, 0.1957, 0.0754],
-          [0.9504, 0.5644, 0.0754],
-          [0.1560, 0.7010, 0.0712],
-          [0.1939, 0.8011, 0.0712],
-          [0.9220, 0.2594, 0.0694],
-          [0.8747, 0.7692, 0.0694],
-          [0.5910, 0.3232, 0.0632],
-          [0.5296, 0.5462, 0.0457],
-          [0.6714, 0.5462, 0.0436]
-        ];
-
-        // Light periwinkle dots. Wrapped copies (-1..+1 cells) keep dots that cross a cell or
-        // canvas edge continuous, so the texture repeats without seams.
-        ctx.fillStyle = '#7c88c4';
-        for (let cy = -1; cy <= cells; cy++) {
-          for (let cx = -1; cx <= cells; cx++) {
-            for (const [u, v, r] of cellDots) {
-              ctx.beginPath();
-              ctx.arc((cx + u) * cell, (cy + v) * cell, r * cell, 0, Math.PI * 2);
-              ctx.fill();
-            }
-          }
-        }
-
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
-        // The carpet is 6.6 x 4.4 (3:2); repeating 1.5 x 1 keeps the dots round instead of stretched.
-        texture.repeat.set(1.5, 1);
-        return texture;
-      }
-
       // 2. Procedural Landscape Portrait (Rolling green hills, winding path, pink sun in purple sky)
       function createPaintingTexture() {
         const canvas = document.createElement('canvas');
@@ -512,14 +452,29 @@
       backWall.position.z = -HALF_SIZE;
       scene.add(backWall);
 
-      // Centered Carpet on the floor
-      const carpetTex = createCarpetTexture();
+      // Centered Carpet on the floor. The pattern is a real image (assets/carpet.png, 1448 x 1086):
+      // light periwinkle ground with royal-blue dots. It loads asynchronously, so the material starts
+      // as flat periwinkle (also what stays if the load fails) and takes the map when it arrives.
       const carpetGeo = new THREE.PlaneGeometry(6.6, 4.4);
       const carpetMat = new THREE.MeshStandardMaterial({
-        map: carpetTex,
+        color: 0x8790c6,   // the image's ground colour, used until (or unless) the texture loads
         roughness: 0.5,
         metalness: 0
       });
+      new THREE.TextureLoader().load('assets/carpet.png', (tex) => {
+        // The image is not seamless (dots are cut at its edges), so it is laid over the carpet once,
+        // not repeated. It is 4:3 and the carpet 3:2, so use the middle 8/9 of its width; that keeps
+        // the dots round at the image's own density (about 12 dot clusters across the carpet).
+        tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+        tex.repeat.set(8 / 9, 1);
+        tex.offset.set(1 / 18, 0);
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        carpetMat.map = tex;
+        carpetMat.color.set(0xffffff);   // the map supplies the colour now
+        carpetMat.needsUpdate = true;    // adding a map changes the shader, so recompile
+      }, undefined, () => console.warn('Bleu Nuit: assets/carpet.png failed to load; using flat periwinkle'));
       const carpet = new THREE.Mesh(carpetGeo, carpetMat);
       carpet.rotation.x = -Math.PI / 2;
       carpet.position.set(0, -HALF_SIZE + 0.015, 0.4);
