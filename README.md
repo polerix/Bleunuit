@@ -62,11 +62,6 @@ Found by reading the source, then partly checked by rendering the page in headle
    (`#a8b4e5`, line 164) with deep blue dots (`#2b3990` and `#1e2b7a`, lines 181 and 194).
    Still open.
 
-2. **`MeshLambertMaterial` is given `roughness`/`metalness`, which it ignores.** The two side/floor
-   wall materials and the carpet material pass them; three.js logs two console warnings
-   (`'roughness' is not a property of this material`, and the same for `metalness`) on every load.
-   Harmless, and not fixed. The surfaces render as plain Lambert either way.
-
 ## Recently closed
 
 - **The framed landscape paintings are now hung.** `createWallArt()` is called twice, one painting
@@ -77,3 +72,19 @@ Found by reading the source, then partly checked by rendering the page in headle
   to a quarter of the wall's height. `createPaintingTexture()` was retuned a little toward the
   close-up reference (colours, a larger sun, more of the lighter back hills showing) rather than
   rewritten.
+
+- **The `MeshLambertMaterial` console warnings are gone.** The floor/ceiling, side-wall and carpet
+  materials are now `MeshStandardMaterial` with `roughness: 0.5` and `metalness: 0`, colours and
+  maps unchanged. The warnings came from passing `roughness`/`metalness` to a material that has
+  neither.
+
+  **Roughness 0.5 has no visible effect.** It is set, but nothing shows it: the scene is lit by an
+  ambient light and two directional lights with no environment map, and with `metalness: 0` there
+  is nothing for a rougher or smoother finish to change. Side by side with the old Lambert
+  materials, the room renders the same (walls `#130f80`; ceiling `#0d0c74` before, `#0e0c74` after, one
+  unit apart). Do not treat it as a
+  finish that is meant to be showing. Metalness is deliberately 0: a trial with `metalness: 0.5`
+  and no environment map turned the walls near-black (`#050541`). With a generated environment
+  map it came back brighter but with gradients, no longer the flat blue. If a real satin or
+  metallic finish is ever wanted, it needs an environment map (`PMREMGenerator`) and the colours
+  retuned against the target.

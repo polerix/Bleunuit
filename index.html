@@ -416,15 +416,16 @@
       scene.add(dirLight2);
 
       // Room materials
-      const navyFloorCeilMat = new THREE.MeshLambertMaterial({ 
+      const navyFloorCeilMat = new THREE.MeshStandardMaterial({ 
         color: 0x110e52, 
-        roughness: 0.9, 
-        metalness: 0.05 
+        roughness: 0.5, 
+        metalness: 0 
       });
 
-      const blueSideWallMat = new THREE.MeshLambertMaterial({ 
+      const blueSideWallMat = new THREE.MeshStandardMaterial({ 
         color: 0x191475, 
-        roughness: 0.95 
+        roughness: 0.5, 
+        metalness: 0 
       });
 
       // Floor
@@ -465,9 +466,10 @@
       // Centered Carpet on the floor
       const carpetTex = createCarpetTexture();
       const carpetGeo = new THREE.PlaneGeometry(6.6, 4.4);
-      const carpetMat = new THREE.MeshLambertMaterial({
+      const carpetMat = new THREE.MeshStandardMaterial({
         map: carpetTex,
-        roughness: 0.85
+        roughness: 0.5,
+        metalness: 0
       });
       const carpet = new THREE.Mesh(carpetGeo, carpetMat);
       carpet.rotation.x = -Math.PI / 2;
