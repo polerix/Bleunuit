@@ -153,62 +153,63 @@
       container.appendChild(renderer.domElement);
 
       
-      // 1. Procedural Carpet Texture (Accurate organic blue dots on light periwinkle)
+      // 1. Procedural Carpet Texture (light periwinkle dots on a deep royal-blue ground)
+      // The dot layout is one repeating cell measured from reference/carpet-pattern.png. The photo
+      // tiles every ~105.75 x ~109.85 px, and 18 circles (x, y, radius, as fractions of the cell)
+      // reproduce its dot mask, which gives the short diagonal chains and staggered rows of the
+      // photo. Radii are grown 8% so dot coverage matches the photo's 29%. The cell is tiled as-is,
+      // not jittered. Colours are the medians of the photo's dot and ground pixels.
       function createCarpetTexture() {
         const canvas = document.createElement('canvas');
         canvas.width = 1024;
         canvas.height = 1024;
         const ctx = canvas.getContext('2d');
 
-        // Light periwinkle background
-        ctx.fillStyle = '#a8b4e5';
+        // Deep royal blue ground
+        ctx.fillStyle = '#1f0287';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Subtle weave noise
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-        for (let i = 0; i < 20000; i++) {
-          const rx = Math.random() * canvas.width;
-          const ry = Math.random() * canvas.height;
-          ctx.fillRect(rx, ry, 2, 2);
-        }
+        const cells = 10;                    // repeats across the canvas (seamless: 10 whole cells)
+        const cell = canvas.width / cells;
+        const cellDots = [                   // [x, y, radius] as fractions of one cell
+          [0.0567, 0.9058, 0.0963],
+          [0.7423, 0.4096, 0.0932],
+          [0.2175, 0.0319, 0.0905],
+          [0.4161, 0.8967, 0.0825],
+          [0.3783, 0.4051, 0.0823],
+          [0.6005, 0.5143, 0.0793],
+          [0.6525, 0.7010, 0.0793],
+          [0.6430, 0.2094, 0.0780],
+          [0.8463, 0.0683, 0.0766],
+          [0.1229, 0.1957, 0.0754],
+          [0.9504, 0.5644, 0.0754],
+          [0.1560, 0.7010, 0.0712],
+          [0.1939, 0.8011, 0.0712],
+          [0.9220, 0.2594, 0.0694],
+          [0.8747, 0.7692, 0.0694],
+          [0.5910, 0.3232, 0.0632],
+          [0.5296, 0.5462, 0.0457],
+          [0.6714, 0.5462, 0.0436]
+        ];
 
-        // Draw organized clusters of royal blue rounded dots
-        const rows = 36;
-        const cols = 36;
-        const stepX = canvas.width / cols;
-        const stepY = canvas.height / rows;
-
-        ctx.fillStyle = '#2b3990'; // deep blue dot
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < cols; c++) {
-            // Cluster of 2-3 organic dots with slight angle
-            const cx = c * stepX + (r % 2 === 0 ? 0 : stepX * 0.5) + (Math.sin(r + c) * 3);
-            const cy = r * stepY + (Math.cos(r * 2) * 2);
-
-            // primary dot
-            ctx.beginPath();
-            ctx.arc(cx, cy, 4 + (Math.sin(r) * 1.5), 0, Math.PI * 2);
-            ctx.fill();
-
-            // companion sub-dot
-            ctx.fillStyle = '#1e2b7a';
-            ctx.beginPath();
-            ctx.arc(cx + 6, cy + 4, 3.5, 0, Math.PI * 2);
-            ctx.fill();
-
-            if ((r + c) % 3 === 0) {
+        // Light periwinkle dots. Wrapped copies (-1..+1 cells) keep dots that cross a cell or
+        // canvas edge continuous, so the texture repeats without seams.
+        ctx.fillStyle = '#7c88c4';
+        for (let cy = -1; cy <= cells; cy++) {
+          for (let cx = -1; cx <= cells; cx++) {
+            for (const [u, v, r] of cellDots) {
               ctx.beginPath();
-              ctx.arc(cx - 5, cy + 5, 3, 0, Math.PI * 2);
+              ctx.arc((cx + u) * cell, (cy + v) * cell, r * cell, 0, Math.PI * 2);
               ctx.fill();
             }
-            ctx.fillStyle = '#2b3990';
           }
         }
 
         const texture = new THREE.CanvasTexture(canvas);
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(1, 1);
+        // The carpet is 6.6 x 4.4 (3:2); repeating 1.5 x 1 keeps the dots round instead of stretched.
+        texture.repeat.set(1.5, 1);
         return texture;
       }
 

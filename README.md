@@ -4,8 +4,8 @@ An interactive 3D room, "Bleu Nuit Gallery". A 10-unit cubic room with navy floo
 blue side walls, a glitter-lettered BLEU NUIT sign on the back wall, a dotted carpet on the floor,
 and a translucent purple acrylic armchair in the middle.
 
-The carpet and the sign are not image files. `index.html` draws both, along with an unused
-landscape painting, at load time onto `<canvas>` elements and uses them as Three.js textures.
+The carpet, the sign and the landscape paintings on the side walls are not image files.
+`index.html` draws all three at load time onto `<canvas>` elements and uses them as Three.js textures.
 
 ## Running it
 
@@ -53,14 +53,8 @@ side walls. Which swatch is meant for which surface is not recorded here.
 
 ## Known gaps
 
-Found by reading the source, then partly checked by rendering the page in headless Chromium
-(software WebGL) at several field-of-view settings.
-
-1. **The carpet colours are inverted relative to the reference.** The reference photo
-   (`reference/carpet-pattern.png`) is light periwinkle dots on a deep blue ground.
-   `createCarpetTexture()` (`index.html`, line 157) does the opposite: a light periwinkle ground
-   (`#a8b4e5`, line 164) with deep blue dots (`#2b3990` and `#1e2b7a`, lines 181 and 194).
-   Still open.
+None currently open. Checked by rendering the page in headless Chromium (software WebGL) at
+several field-of-view settings.
 
 ## Recently closed
 
@@ -88,3 +82,19 @@ Found by reading the source, then partly checked by rendering the page in headle
   map it came back brighter but with gradients, no longer the flat blue. If a real satin or
   metallic finish is ever wanted, it needs an environment map (`PMREMGenerator`) and the colours
   retuned against the target.
+
+- **The carpet colours are fixed, and the photo beat the mockup.** `createCarpetTexture()` used to
+  draw a light periwinkle ground with dark blue dots, the reverse of `reference/carpet-pattern.png`.
+  It now draws light periwinkle dots (`#7c88c4`) on a deep royal-blue ground (`#1f0287`), both the
+  median colours of the photo's dot and ground pixels. The dot layout is also taken from the photo:
+  it tiles every ~105.75 x ~109.85 px, and 18 circles measured from one cell (radii grown 8% to
+  match the photo's 29% dot coverage) are tiled as-is, giving the photo's short diagonal chains and
+  staggered rows. Checked against the photo at the same scale, the dot masks overlap by 0.85
+  (intersection over union). Dot cells are square and the texture repeats 1.5 x 1 over the 6.6 x 4.4
+  carpet so the dots stay round. The photo's cell is about 4% taller than wide, which is ignored.
+
+  **The two references disagreed, and the photo won.** The room mockup used as the target for the
+  paintings shows a *light* carpet with darker dots, which is what the old code drew. The carpet
+  photo shows the reverse. PAUL-ERIC re-sent the photo as "the actual pattern of the carpet", so the
+  photo is authoritative and the mockup's light carpet is wrong. The floor is therefore darker than
+  in that mockup, on purpose. Do not flip it back to match the mockup.
