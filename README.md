@@ -4,30 +4,55 @@ An interactive 3D room, "Bleu Nuit Gallery". A 10-unit cubic room with navy floo
 blue side walls, a glitter-lettered BLEU NUIT sign on the back wall, a dotted carpet on the floor,
 and a translucent purple acrylic armchair in the middle.
 
-The sign and the landscape paintings on the side walls are not image files: `index.html` draws
+The sign and the landscape paintings on the side walls are not image files: `src/textures.js` draws
 them at load time onto `<canvas>` elements and uses them as Three.js textures. The carpet is the
-exception: it is a real image, `assets/carpet.png`, loaded at runtime.
+exception: it is a real image, `src/assets/carpet.png`, imported through the build.
 
 ## Running it
 
-There is no build step and no package manager: `index.html` plus the `assets/` folder is the whole
-site. It needs a browser that supports WebGL, and it **must be served over HTTP**, not opened
-straight off disk.
+It is a [Vite](https://vite.dev) project using [three.js](https://threejs.org) from npm (0.186) and
+plain CSS for the page chrome. There are no CDN requests.
 
-- **Live:** https://polerix.github.io/Bleunuit/ (GitHub Pages, from `main` at the repo root).
-- **Locally:** run `python3 -m http.server` in the repo folder and open http://localhost:8000/.
+| Command | What it does |
+|---|---|
+| `npm install` | Install dependencies (once) |
+| `npm run dev` | Dev server with hot reload at http://localhost:4188/ |
+| `npm run build` | Plain production build into `dist/` (not committed) |
+| `npm run build:pages` | Build for GitHub Pages into `docs/` with the `/Bleunuit/` base path |
+| `npm run preview:pages` | Serve the `docs/` build at http://localhost:4189/Bleunuit/ |
 
-**Why double-clicking `index.html` no longer works properly.** The sign and paintings are drawn in
-`<canvas>`, which is fine on `file://`. The carpet is a loaded PNG, and browsers treat a `file://`
-page as an opaque origin, so the WebGL texture is blocked (Chrome logs a CORS error). Nothing crashes:
-the carpet falls back to a flat periwinkle floor with no dots, and the rest of the room is
-unchanged. It is a non-issue on GitHub Pages or any local HTTP server.
+- **Live:** https://polerix.github.io/Bleunuit/. GitHub Pages serves the committed `docs/` folder from
+  `main`. After changing the source, run `npm run build:pages` and commit `docs/` with it.
+- This is the same arrangement as SpinnerCockpit: the app entry is `app.html`, and
+  `scripts/finish-pages-build.mjs` renames it to `docs/index.html` and adds `.nojekyll`.
+- The built page needs a browser with WebGL. Open it through a server (the commands above); a bare
+  `file://` page cannot load the bundled assets.
 
-Three.js **r128** (cdnjs) and **Tailwind** (the Tailwind Play CDN, `cdn.tailwindcss.com`) are loaded
-from CDNs, so **it needs network access** the first time it loads. Offline it will not render.
+### Layout
 
-The file is named `index.html` so the repo can be served from GitHub Pages without changes. It was
-originally called `Bleu_Nuit_3D_Cubic_Room.html`.
+| File | What it holds |
+|---|---|
+| `app.html` | Page markup: canvas container, FOV slider, header buttons, gesture hint |
+| `src/main.js` | Wires everything together and runs the render loop |
+| `src/scene.js` | Renderer, camera, background, lights, and the colour setup described below |
+| `src/room.js` | Floor, ceiling, side walls, BLEU NUIT wall, carpet and the two framed paintings |
+| `src/chair.js` | The armchair |
+| `src/textures.js` | The sign, glitter and painting texture generators, and the carpet loader |
+| `src/letters.js` | The traced BLEU NUIT letter outlines |
+| `src/controls.js` | Orbit camera, FOV zoom, mouse and touch handling |
+| `src/ui.js` | Slider, buttons and hint behaviour |
+| `src/style.css` | All page styling (this replaced the Tailwind CDN) |
+
+### Colour setup: keep it as is
+
+The room was tuned on three r128, which had no colour management. To keep every colour and light level
+the same on a current three, `src/scene.js` sets `THREE.ColorManagement.enabled = false` and a linear
+output colour space, and scales the three light intensities by pi (three r155 moved to physical light
+units), plus a further 1.04 that was measured against r128 renders. Turning colour management on
+would change every colour in the room. Measured against the pre-Vite build with the same random seed,
+the walls, ceiling, floor and carpet match to within about 2 units of 255 at the default view (up to
+about 5 at 22 degrees), and the sign wall and paintings match exactly. The glitter pattern itself is
+random per load.
 
 ## Controls
 
@@ -54,8 +79,8 @@ are not loaded by the page.
 
 | File | What it is | Used to check |
 |---|---|---|
-| `reference/signage-bleu-nuit.png` | Photo of the real BLEU NUIT sign: purple glitter-filled block letters with a lighter violet outline, stacked BLEU over NUIT on near-black. 1600×1200. | `createBleuNuitTexture()`, the back wall. The letter outlines are traced from this photo |
-| `reference/carpet-pattern.png` | An earlier carpet photo: light periwinkle dots in diagonal clusters on a deep royal blue ground. 1448×1086. **Superseded** by `assets/carpet.png` (see Recently closed). Kept for history. | Nothing now |
+| `reference/signage-bleu-nuit.png` | Photo of the real BLEU NUIT sign: purple glitter-filled block letters with a lighter violet outline, stacked BLEU over NUIT on near-black. 1600×1200. | `createBleuNuitTexture()` in `src/textures.js`, the back wall. The letter outlines in `src/letters.js` are traced from this photo |
+| `reference/carpet-pattern.png` | An earlier carpet photo: light periwinkle dots in diagonal clusters on a deep royal blue ground. 1448×1086. **Superseded** by `src/assets/carpet.png` (see Recently closed). Kept for history. | Nothing now |
 | `reference/swatch-navy-dark.png` | Flat dark navy swatch, measured at about `#0f084f`. | Room surface colours |
 | `reference/swatch-indigo.png` | Flat indigo/violet swatch, measured at about `#261987`. | Room surface colours |
 
@@ -64,11 +89,12 @@ side walls. Which swatch is meant for which surface is not recorded here.
 
 ## Assets
 
-`assets/` holds files the page loads at runtime, unlike `reference/`, which is never loaded.
+`src/assets/` holds files the page loads at runtime, unlike `reference/`, which is never loaded.
+Vite fingerprints them into `docs/assets/` on build.
 
 | File | What it is |
 |---|---|
-| `assets/carpet.png` | The floor carpet: light periwinkle ground (`#8790c6`) with royal-blue dots (`#2c38ac`), about 28% dot coverage. 1448×1086 (4:3), 2.7 MB. Not seamless, so it is used once and not tiled (see below). |
+| `src/assets/carpet.png` | The floor carpet: light periwinkle ground (`#8790c6`) with royal-blue dots (`#2c38ac`), about 28% dot coverage. 1448×1086 (4:3), 2.7 MB. Not seamless, so it is used once and not tiled (see below). |
 
 ## Known gaps
 
@@ -112,7 +138,7 @@ several field-of-view settings.
   no longer the carpet's authority, and the light floor is intended. Do not "fix" it back to the
   dark version, and do not treat the photo-versus-mockup note that used to be here as current.
 
-  It is loaded from `assets/carpet.png`, not generated, because the image is exact and it is a
+  It is loaded from `src/assets/carpet.png` (originally `assets/carpet.png`, before the Vite move), not generated, because the image is exact and it is a
   finished asset. It loads asynchronously: the carpet material starts as flat periwinkle (`#8790c6`,
   also what remains if the load fails), and the texture is assigned in the loader callback with
   `needsUpdate` set, so there is no blank first paint. The image is **not seamless** (its wrap-around
