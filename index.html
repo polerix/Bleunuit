@@ -221,33 +221,33 @@
 
         // Sky: Deep purple gradient
         const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.6);
-        skyGrad.addColorStop(0, '#2d0947');
-        skyGrad.addColorStop(1, '#4a156e');
+        skyGrad.addColorStop(0, '#3a0a5c');
+        skyGrad.addColorStop(1, '#480878');
         ctx.fillStyle = skyGrad;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         // Glowing pink/salmon sun
         const sunX = canvas.width * 0.5;
-        const sunY = canvas.height * 0.32;
-        const sunRad = 70;
+        const sunY = canvas.height * 0.3;
+        const sunRad = 105;
 
         // Sun subtle aura
         const auraGrad = ctx.createRadialGradient(sunX, sunY, sunRad * 0.7, sunX, sunY, sunRad * 2);
-        auraGrad.addColorStop(0, 'rgba(255, 120, 140, 0.4)');
-        auraGrad.addColorStop(1, 'rgba(255, 120, 140, 0)');
+        auraGrad.addColorStop(0, 'rgba(251, 131, 128, 0.4)');
+        auraGrad.addColorStop(1, 'rgba(251, 131, 128, 0)');
         ctx.fillStyle = auraGrad;
         ctx.beginPath();
         ctx.arc(sunX, sunY, sunRad * 2, 0, Math.PI * 2);
         ctx.fill();
 
         // Sun disc
-        ctx.fillStyle = '#ff7b77';
+        ctx.fillStyle = '#fb8380';
         ctx.beginPath();
         ctx.arc(sunX, sunY, sunRad, 0, Math.PI * 2);
         ctx.fill();
 
-        // Background gentle rolling hills (lime-green)
-        ctx.fillStyle = '#48ca4b';
+        // Background gentle rolling hills (light mint green)
+        ctx.fillStyle = '#6dd97f';
         ctx.beginPath();
         ctx.moveTo(0, canvas.height * 0.58);
         ctx.quadraticCurveTo(canvas.width * 0.25, canvas.height * 0.44, canvas.width * 0.5, canvas.height * 0.52);
@@ -258,28 +258,28 @@
         ctx.fill();
 
         // Foreground hills (rich vibrant green)
-        ctx.fillStyle = '#2fb032';
+        ctx.fillStyle = '#46ab3c';
         ctx.beginPath();
-        ctx.moveTo(0, canvas.height * 0.52);
-        ctx.quadraticCurveTo(canvas.width * 0.35, canvas.height * 0.6, canvas.width * 0.5, canvas.height * 0.5);
+        ctx.moveTo(0, canvas.height * 0.58);
+        ctx.quadraticCurveTo(canvas.width * 0.35, canvas.height * 0.66, canvas.width * 0.5, canvas.height * 0.56);
         ctx.lineTo(canvas.width * 0.5, canvas.height);
         ctx.lineTo(0, canvas.height);
         ctx.closePath();
         ctx.fill();
 
-        ctx.fillStyle = '#2db834';
+        ctx.fillStyle = '#3fa940';
         ctx.beginPath();
-        ctx.moveTo(canvas.width * 0.5, canvas.height * 0.5);
-        ctx.quadraticCurveTo(canvas.width * 0.7, canvas.height * 0.45, canvas.width, canvas.height * 0.6);
+        ctx.moveTo(canvas.width * 0.5, canvas.height * 0.56);
+        ctx.quadraticCurveTo(canvas.width * 0.7, canvas.height * 0.5, canvas.width, canvas.height * 0.64);
         ctx.lineTo(canvas.width, canvas.height);
         ctx.lineTo(canvas.width * 0.5, canvas.height);
         ctx.closePath();
         ctx.fill();
 
         // Light curving winding path down the center
-        ctx.fillStyle = '#d5d4e6';
+        ctx.fillStyle = '#bbb8d8';
         ctx.beginPath();
-        ctx.moveTo(canvas.width * 0.52, canvas.height * 0.5);
+        ctx.moveTo(canvas.width * 0.52, canvas.height * 0.56);
         ctx.bezierCurveTo(
           canvas.width * 0.44, canvas.height * 0.62,
           canvas.width * 0.56, canvas.height * 0.72,
@@ -289,7 +289,7 @@
         ctx.bezierCurveTo(
           canvas.width * 0.36, canvas.height * 0.72,
           canvas.width * 0.40, canvas.height * 0.6,
-          canvas.width * 0.49, canvas.height * 0.5
+          canvas.width * 0.49, canvas.height * 0.56
         );
         ctx.closePath();
         ctx.fill();
@@ -477,35 +477,81 @@
       const paintingTex = createPaintingTexture();
       const frameGroup = new THREE.Group();
 
+      // Framed landscape: thin navy border with a dark inner lip, art recessed behind it.
+      // Local +z is the viewing direction; the group's origin is the centre of the frame.
       function createWallArt() {
         const artRoot = new THREE.Group();
-        
-        // Canvas painting
-        const pGeo = new THREE.PlaneGeometry(2.6, 1.95);
-        const pMat = new THREE.MeshBasicMaterial({ map: paintingTex });
-        const pMesh = new THREE.Mesh(pGeo, pMat);
-        pMesh.position.z = 0.05;
+        const artW = 2.6;
+        const artH = 1.95;
+        const border = 0.08;   // visible face width of the frame
+        const lip = 0.03;      // dark inner lip between the frame face and the art
+        const depth = 0.06;    // how far the frame stands proud of the wall
+        const recess = 0.02;   // how far behind the frame face the art sits
+
+        // Canvas painting (untouched by tone mapping so it keeps the reference colours)
+        const pMat = new THREE.MeshBasicMaterial({ map: paintingTex, toneMapped: false });
+        const pMesh = new THREE.Mesh(new THREE.PlaneGeometry(artW, artH), pMat);
+        pMesh.position.z = depth - recess;
         artRoot.add(pMesh);
 
-        // Frame border (Navy frame)
-        const frameMat = new THREE.MeshStandardMaterial({ 
-          color: 0x1f1966, 
-          roughness: 0.5,
-          metalness: 0.2
+        const faceMat = new THREE.MeshLambertMaterial({ color: 0x2e296d });
+        const topMat = new THREE.MeshLambertMaterial({ color: 0x8987d7 });  // thin highlight
+        const lipMat = new THREE.MeshBasicMaterial({ color: 0x0c0933, toneMapped: false });
+
+        // Four border pieces, each a box, framing the inner opening (artW + 2*lip by artH + 2*lip)
+        const innerW = artW + lip * 2;
+        const innerH = artH + lip * 2;
+        const outerW = innerW + border * 2;
+        const outerH = innerH + border * 2;
+        const pieces = [
+          // [width, height, x, y]
+          [outerW, border, 0, (innerH + border) / 2],     // top
+          [outerW, border, 0, -(innerH + border) / 2],    // bottom
+          [border, innerH, -(innerW + border) / 2, 0],    // left
+          [border, innerH, (innerW + border) / 2, 0]      // right
+        ];
+        pieces.forEach(([w, h, x, y]) => {
+          const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, depth), faceMat);
+          m.position.set(x, y, depth / 2);
+          artRoot.add(m);
         });
-        const fBorder = 0.1;
-        const fWidth = 2.6 + fBorder * 2;
-        const fHeight = 1.95 + fBorder * 2;
-        const fDepth = 0.09;
-        
-        // Outer box with recessed front
-        const frameBoxGeo = new THREE.BoxGeometry(fWidth, fHeight, fDepth);
-        const frameMesh = new THREE.Mesh(frameBoxGeo, frameMat);
-        frameMesh.position.z = 0.01;
-        artRoot.add(frameMesh);
+
+        // Highlight on the top edge only: a hair-thin strip on the front face of the top piece
+        const hl = new THREE.Mesh(new THREE.PlaneGeometry(outerW, 0.012), topMat);
+        hl.position.set(0, outerH / 2 - 0.006, depth + 0.001);
+        artRoot.add(hl);
+
+        // Inner lip: four thin dark strips ringing the art, set just in front of it
+        const lipZ = depth - recess + 0.002;
+        [
+          [innerW, lip, 0, (artH + lip) / 2],
+          [innerW, lip, 0, -(artH + lip) / 2],
+          [lip, artH, -(artW + lip) / 2, 0],
+          [lip, artH, (artW + lip) / 2, 0]
+        ].forEach(([w, h, x, y]) => {
+          const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), lipMat);
+          m.position.set(x, y, lipZ);
+          artRoot.add(m);
+        });
 
         return artRoot;
       }
+
+      // Hang one landscape on each side wall, facing into the room. The frame's back sits
+      // on the wall plane; the 0.005 gap avoids z-fighting with the wall surface.
+      const wallGap = 0.005;
+      const leftArt = createWallArt();
+      leftArt.position.set(-HALF_SIZE + wallGap, 0, 0);
+      leftArt.rotation.y = Math.PI / 2;      // +z (viewing side) -> +x, into the room
+      frameGroup.add(leftArt);
+
+      const rightArt = createWallArt();
+      rightArt.position.set(HALF_SIZE - wallGap, 0, 0);
+      rightArt.rotation.y = -Math.PI / 2;    // +z -> -x, into the room
+      frameGroup.add(rightArt);
+
+      scene.add(frameGroup);
+
       function createTranslucentPurpleArmchair() {
         const chairGroup = new THREE.Group();
 

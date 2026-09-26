@@ -53,16 +53,27 @@ side walls. Which swatch is meant for which surface is not recorded here.
 
 ## Known gaps
 
-Found by reading the source. The page has not been rendered or tested in a browser. Neither gap
-has been fixed.
+Found by reading the source, then partly checked by rendering the page in headless Chromium
+(software WebGL) at several field-of-view settings.
 
 1. **The carpet colours are inverted relative to the reference.** The reference photo
    (`reference/carpet-pattern.png`) is light periwinkle dots on a deep blue ground.
    `createCarpetTexture()` (`index.html`, line 157) does the opposite: a light periwinkle ground
    (`#a8b4e5`, line 164) with deep blue dots (`#2b3990` and `#1e2b7a`, lines 181 and 194).
+   Still open.
 
-2. **The framed landscape painting is built but never shown.** `createWallArt()` (line 480) builds
-   the frame and painting mesh but is never called, and `frameGroup` (line 478) is created empty and
-   never added to the scene. `createPaintingTexture()` (line 216) is called, at line 477, so the
-   1024×768 painting texture is drawn on every load, but its only consumer is `createWallArt()`, so it
-   is never displayed. This is either dead code or an unfinished feature.
+2. **`MeshLambertMaterial` is given `roughness`/`metalness`, which it ignores.** The two side/floor
+   wall materials and the carpet material pass them; three.js logs two console warnings
+   (`'roughness' is not a property of this material`, and the same for `metalness`) on every load.
+   Harmless, and not fixed. The surfaces render as plain Lambert either way.
+
+## Recently closed
+
+- **The framed landscape paintings are now hung.** `createWallArt()` is called twice, one painting
+  per side wall, both parented under `frameGroup`, which is added to the scene. Each faces into the
+  room, is centred on its wall in height and depth, and stands 0.005 off the wall to avoid
+  z-fighting. The frame is a thin four-piece navy border with a dark inner lip and a hairline
+  highlight on the top edge, and the art sits recessed behind it. Frame plus art is about a fifth
+  to a quarter of the wall's height. `createPaintingTexture()` was retuned a little toward the
+  close-up reference (colours, a larger sun, more of the lighter back hills showing) rather than
+  rewritten.
