@@ -43,7 +43,7 @@ are not loaded by the page.
 
 | File | What it is | Used to check |
 |---|---|---|
-| `reference/signage-bleu-nuit.png` | Photo of the real BLEU NUIT sign: purple glitter-filled block letters with a lighter violet outline, stacked BLEU over NUIT on near-black. 1600×1200. | `createBleuNuitTexture()`, the back wall |
+| `reference/signage-bleu-nuit.png` | Photo of the real BLEU NUIT sign: purple glitter-filled block letters with a lighter violet outline, stacked BLEU over NUIT on near-black. 1600×1200. | `createBleuNuitTexture()`, the back wall. The letter outlines are traced from this photo |
 | `reference/carpet-pattern.png` | The carpet: light periwinkle dots in diagonal clusters on a deep royal blue ground. 1448×1086. | `createCarpetTexture()`, the floor carpet |
 | `reference/swatch-navy-dark.png` | Flat dark navy swatch, measured at about `#0f084f`. | Room surface colours |
 | `reference/swatch-indigo.png` | Flat indigo/violet swatch, measured at about `#261987`. | Room surface colours |
@@ -98,3 +98,21 @@ several field-of-view settings.
   photo shows the reverse. PAUL-ERIC re-sent the photo as "the actual pattern of the carpet", so the
   photo is authoritative and the mockup's light carpet is wrong. The floor is therefore darker than
   in that mockup, on purpose. Do not flip it back to match the mockup.
+
+- **The BLEU NUIT lettering now matches the photo.** It was `Impact` / `Arial Black` text with a
+  three-layer neon outline and thin random glitter. It is now eight letter outlines drawn as paths,
+  traced from `reference/signage-bleu-nuit.png` (a few vertices each, in the photo's own pixels), so
+  the wide blocky proportions, the chamfered corners, the flat-bottomed angled U, the B's two
+  rectangular counters, the tight spacing and the slight hand-cut stagger all come from the photo.
+  Paths were chosen over a font on evidence: with each word fitted to the photo's word box, the best
+  of ten candidate fonts overlapped the photo's letter mask by 0.77 (Bowlby One), and Impact, the
+  old font, by 0.72 (Arial Black 0.60, Archivo Black 0.67). None has the angular letters. Because
+  there is no font, there is no webfont request and nothing to load before the texture is drawn.
+  The outline is one ~9px keyline in `#553ccd` hugging the inside edge, with the photo's darker inner
+  rim fading out over ~28px. The glitter is generated per letter, mapped through the photo's own
+  per-channel percentiles inside the letters, so its tonal spread and dark/bright clumping match.
+  The texture is 1600 x 1600 to fit the square wall, with the sign at 78% of the wall's width and
+  not stretched. The sign material is not tone-mapped, and the texture no longer reads a canvas
+  back (`getImageData`), so the Canvas2D `willReadFrequently` console hint is gone. What is not
+  reproduced: the photo's slight 3D depth and glow around the letter edges, and the very bright
+  pin-point sparkles, which are averaged away at the size the wall is shown.

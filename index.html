@@ -299,106 +299,153 @@
       }
 
       // 3. Procedural "BLEU NUIT" Back Wall Signboard
+      // The lettering is drawn as paths, not text. The photo's letters are hand-cut angular blocks
+      // (chamfered corners, flat-bottomed U, slanted stems) that no font provides, so each letter
+      // outline was traced from reference/signage-bleu-nuit.png and simplified to a few vertices.
+      // Coordinates below are in the photo's own pixels (1600 x 1200); the block is centred on the
+      // canvas at load. Each letter is [outline, ...counters].
+      const BLEU_NUIT_LETTERS = [
+        // BLEU
+          [[[145,91],[416,102],[501,196],[434,299],[517,384],[441,558],[141,551]],[[285,208],[283,318],[324,318],[325,212]],[[284,377],[283,478],[324,478],[325,380]]], // B
+          [[[528,108],[641,115],[667,440],[782,449],[780,567],[520,560]]], // L
+          [[[798,124],[1041,140],[1029,253],[915,273],[918,288],[1021,293],[1021,407],[926,411],[925,456],[1055,456],[1052,573],[790,565]]], // E
+          [[[1064,131],[1169,138],[1204,462],[1240,462],[1242,139],[1373,143],[1375,467],[1317,579],[1122,576],[1102,548],[1056,465],[1057,133]]], // U
+        // NUIT
+          [[[145,570],[241,573],[346,721],[419,577],[531,580],[532,1028],[404,1026],[315,891],[280,1028],[144,1026]]], // N
+          [[[576,580],[697,585],[733,899],[759,899],[760,586],[900,589],[903,905],[833,1026],[643,1026],[617,993],[571,910]]], // U
+          [[[932,590],[1049,593],[1087,1027],[930,1025]]], // I
+          [[[1069,591],[1383,599],[1378,736],[1291,738],[1303,1026],[1147,1023],[1150,736],[1067,732]]] // T
+      ];
+
+      // Dense purple glitter for the letter faces, returned as a w x h canvas. Built with
+      // createImageData/putImageData only, so nothing is read back from a canvas. Fine grain is
+      // per-pixel sparkle over ~4-9px soft grains, plus two octaves of soft value noise for the clumps
+      // and dark blotches. The combined field is mapped to colour through the per-channel percentiles
+      // measured inside the photo's letters, so the tonal spread matches it.
+      function createGlitterLayer(w, h) {
+        const n = w * h;
+        const standardize = (a) => {
+          let m = 0; for (let i = 0; i < n; i++) m += a[i]; m /= n;
+          let v = 0; for (let i = 0; i < n; i++) v += (a[i] - m) * (a[i] - m);
+          const k = 1 / Math.sqrt(v / n || 1);
+          for (let i = 0; i < n; i++) a[i] = (a[i] - m) * k;
+          return a;
+        };
+        const valueNoise = (cell) => {
+          const gw = Math.ceil(w / cell) + 2, gh = Math.ceil(h / cell) + 2;
+          const g = new Float32Array(gw * gh);
+          for (let i = 0; i < g.length; i++) g[i] = Math.random();
+          const a = new Float32Array(n);
+          for (let y = 0; y < h; y++) {
+            const fy = y / cell, iy = Math.floor(fy); let ty = fy - iy; ty = ty * ty * (3 - 2 * ty);
+            for (let x = 0; x < w; x++) {
+              const fx = x / cell, ix = Math.floor(fx); let tx = fx - ix; tx = tx * tx * (3 - 2 * tx);
+              const p = iy * gw + ix;
+              a[y * w + x] = (g[p] * (1 - tx) + g[p + 1] * tx) * (1 - ty) + (g[p + gw] * (1 - tx) + g[p + gw + 1] * tx) * ty;
+            }
+          }
+          return standardize(a);
+        };
+
+        // Fine grain: per-pixel sparkle over ~4-9px soft grains (value noise avoids the axis-aligned
+        // hatching a box blur leaves behind)
+        const sparkle = new Float32Array(n);
+        for (let i = 0; i < n; i++) sparkle[i] = Math.random();
+        standardize(sparkle);
+        const grain = valueNoise(4);
+        const grainBig = valueNoise(9);
+        const fine = new Float32Array(n);
+        for (let i = 0; i < n; i++) fine[i] = 0.55 * sparkle[i] + 0.6 * grain[i] + 0.55 * grainBig[i];
+        standardize(fine);
+        const clumpBig = valueNoise(56);
+        const clumpSmall = valueNoise(18);
+        const clump = 0.2;    // weight of the soft clumps against the fine grain
+
+        // Percentile tables (u = 0, 1, 5, 25, 50, 75, 95, 99, 100%) measured in the photo's letters
+        const U = [0, 0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99, 1];
+        const R = [26, 32, 39, 59, 82, 108, 142, 162, 190];
+        const G = [0, 0, 5, 19, 40, 64, 98, 119, 150];
+        const B = [118, 126, 136, 157, 179, 204, 235, 251, 255];
+        const lerpTable = (t, u) => {
+          let k = 1; while (k < U.length - 1 && u > U[k]) k++;
+          const f = (u - U[k - 1]) / (U[k] - U[k - 1]);
+          return t[k - 1] + (t[k] - t[k - 1]) * f;
+        };
+
+        const layer = document.createElement('canvas');
+        layer.width = w;
+        layer.height = h;
+        const lctx = layer.getContext('2d');
+        const img = lctx.createImageData(w, h);
+        const d = img.data;
+        const wFine = Math.sqrt(1 - clump * clump);
+        for (let i = 0; i < n; i++) {
+          const z = wFine * fine[i] + clump * (0.8 * clumpBig[i] + 0.6 * clumpSmall[i]);
+          const u = 1 / (1 + Math.exp(-1.702 * z));   // logistic ~ normal CDF
+          d[i * 4] = lerpTable(R, u);
+          d[i * 4 + 1] = lerpTable(G, u);
+          d[i * 4 + 2] = lerpTable(B, u);
+          d[i * 4 + 3] = 255;
+        }
+        lctx.putImageData(img, 0, 0);
+        return layer;
+      }
+
       function createBleuNuitTexture() {
+        // Square, to match the square back wall, so the lettering keeps the photo's proportions.
         const canvas = document.createElement('canvas');
-        canvas.width = 1200;
-        canvas.height = 1000;
+        canvas.width = 1600;
+        canvas.height = 1600;
         const ctx = canvas.getContext('2d');
 
-        // Deep blue-black wall texture background
-        ctx.fillStyle = '#06041a';
+        // Deep blue-black wall (the photo's background, sampled)
+        ctx.fillStyle = '#09022e';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         // Subtle textured wall noise
         ctx.fillStyle = 'rgba(40, 20, 90, 0.2)';
-        for (let i = 0; i < 40000; i++) {
+        for (let i = 0; i < 70000; i++) {
           ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 2, 2);
         }
 
-        // Draw "BLEU NUIT" bold athletic/beveled marquee letters
-        function drawGlitterText(text, x, y, fontSize, letterSpacing) {
-          ctx.font = `900 ${fontSize}px "Impact", "Arial Black", sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
+        // Bounds of the lettering block, then centre it (slightly above middle) on the canvas
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        BLEU_NUIT_LETTERS.forEach((letter) => letter[0].forEach(([px, py]) => {
+          minX = Math.min(minX, px); maxX = Math.max(maxX, px);
+          minY = Math.min(minY, py); maxY = Math.max(maxY, py);
+        }));
+        const offX = Math.round(canvas.width / 2 - (minX + maxX) / 2);
+        const offY = Math.round(canvas.height * 0.47 - (minY + maxY) / 2);
 
-          // Outer glowing bevel / neon frame outline
-          ctx.strokeStyle = '#4338ca';
-          ctx.lineWidth = 26;
-          ctx.lineJoin = 'miter';
-          ctx.strokeText(text, x, y);
+        const letters = new Path2D();
+        BLEU_NUIT_LETTERS.forEach((letter) => letter.forEach((loop) => {
+          loop.forEach(([px, py], i) => (i ? letters.lineTo(px + offX, py + offY) : letters.moveTo(px + offX, py + offY)));
+          letters.closePath();
+        }));
 
-          ctx.strokeStyle = '#818cf8';
-          ctx.lineWidth = 14;
-          ctx.strokeText(text, x, y);
+        // Glitter fills the letters (even-odd, so the B's counters stay open). The keyline and the
+        // inner shadow are bands hugging the inside of every outline, drawn by stroking the same
+        // path at twice the band width and clipping to the letters.
+        const bx = minX + offX, by = minY + offY;
+        const glitter = createGlitterLayer(maxX - minX + 1, maxY - minY + 1);
+        ctx.save();
+        ctx.clip(letters, 'evenodd');
+        ctx.drawImage(glitter, bx, by);
+        ctx.lineJoin = 'miter';
+        ctx.miterLimit = 10;
 
-          ctx.strokeStyle = '#c084fc';
-          ctx.lineWidth = 6;
-          ctx.strokeText(text, x, y);
-
-          // Dark backing for letters
-          ctx.fillStyle = '#2e1065';
-          ctx.fillText(text, x, y);
-
-          // Save clipping path to paint glitter texture inside the letters
-          ctx.save();
-          // We can't clip easily with native canvas fillText directly without path,
-          // so we render stippled purple glitter inside stroke bounds
-          const charMetrics = ctx.measureText(text);
-          const boundLeft = x - charMetrics.width / 2 - 20;
-          const boundRight = x + charMetrics.width / 2 + 20;
-          const boundTop = y - fontSize / 2 - 20;
-          const boundBottom = y + fontSize / 2 + 20;
-
-          // Temporary canvas for letter mask
-          const maskCanvas = document.createElement('canvas');
-          maskCanvas.width = canvas.width;
-          maskCanvas.height = canvas.height;
-          const mctx = maskCanvas.getContext('2d');
-          mctx.font = ctx.font;
-          mctx.textAlign = 'center';
-          mctx.textBaseline = 'middle';
-          mctx.fillStyle = '#ffffff';
-          mctx.fillText(text, x, y);
-
-          // Render shimmering purple/violet glitter onto the main canvas through the mask
-          const maskData = mctx.getImageData(0, 0, canvas.width, canvas.height).data;
-          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const d = imgData.data;
-
-          for (let py = Math.max(0, Math.floor(boundTop)); py < Math.min(canvas.height, Math.ceil(boundBottom)); py++) {
-            for (let px = Math.max(0, Math.floor(boundLeft)); px < Math.min(canvas.width, Math.ceil(boundRight)); px++) {
-              const idx = (py * canvas.width + px) * 4;
-              if (maskData[idx + 3] > 100) {
-                // Inside text: create dynamic purple speckled glitter
-                const rand = Math.random();
-                if (rand > 0.45) {
-                  // Bright violet/magenta sparkles
-                  const brightness = Math.random();
-                  if (brightness > 0.85) {
-                    d[idx] = 230;     // R
-                    d[idx + 1] = 190; // G
-                    d[idx + 2] = 255; // B
-                  } else if (brightness > 0.5) {
-                    d[idx] = 168;
-                    d[idx + 1] = 85;
-                    d[idx + 2] = 247;
-                  } else {
-                    d[idx] = 120;
-                    d[idx + 1] = 40;
-                    d[idx + 2] = 200;
-                  }
-                  d[idx + 3] = 255;
-                }
-              }
-            }
-          }
-          ctx.putImageData(imgData, 0, 0);
-          ctx.restore();
-        }
-
-        // Draw BLEU on top, NUIT on bottom
-        drawGlitterText('BLEU', canvas.width / 2, canvas.height * 0.33, 290);
-        drawGlitterText('NUIT', canvas.width / 2, canvas.height * 0.70, 290);
+        // Inner shadow: in the photo the glitter is darker just inside the keyline and recovers to
+        // full brightness ~28px in. Measured as the blend towards (28, 7, 152): about 50% out to
+        // 16px, falling to 0 at 28px. Stacked strokes, each clipped to the letters, approximate it.
+        [[16, 0.05], [18, 0.07], [20, 0.08], [22, 0.10], [24, 0.08], [26, 0.08], [28, 0.04]].forEach(([reach, a]) => {
+          ctx.strokeStyle = `rgba(28, 7, 152, ${a})`;
+          ctx.lineWidth = reach * 2;
+          ctx.stroke(letters);
+        });
+        ctx.strokeStyle = '#553ccd';   // keyline: ~9px band, the photo's measured colour
+        ctx.lineWidth = 18;
+        ctx.stroke(letters);
+        ctx.restore();
 
         return new THREE.CanvasTexture(canvas);
       }
@@ -458,7 +505,8 @@
       // Back Wall (BLEU NUIT graphic billboard)
       const bleuNuitTex = createBleuNuitTexture();
       const backWallMat = new THREE.MeshBasicMaterial({ 
-        map: bleuNuitTex 
+        map: bleuNuitTex,
+        toneMapped: false   // keep the sign's colours as drawn, like the paintings
       });
       const backWall = new THREE.Mesh(wallGeo, backWallMat);
       backWall.position.z = -HALF_SIZE;
