@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <title>Bleu Nuit - Interactive 3D Room</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #07052e; /* Darkest blue background matching spec */
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      touch-action: none;
+    }
+    .custom-range-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 140px;
+      height: 4px;
+      border-radius: 9999px;
+      background: rgba(147, 131, 240, 0.35);
+      outline: none;
+      transform: rotate(-90deg);
+      transform-origin: center;
+      cursor: pointer;
+    }
+    .custom-range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #c084fc;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 10px rgba(192, 132, 252, 0.8);
+      cursor: pointer;
+    }
+    .custom-range-slider::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #c084fc;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 10px rgba(192, 132, 252, 0.8);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body class="relative bg-[#07052e] text-white">
+
+  <div id="canvas-container"></div>
+
+  <!-- Perspective Control Indicator on Left (similar to reference mockup) -->
+  <div class="absolute left-4 top-1/2 -translate-y-1/2 z-20 flex flex-col items-center select-none pointer-events-auto">
+    <div class="flex items-center space-x-2">
+      <div class="h-44 w-10 flex items-center justify-center relative">
+        <input 
+          id="fovSlider" 
+          type="range" 
+          min="22" 
+          max="92" 
+          value="60" 
+          class="custom-range-slider"
+          title="Perspective (Wide Angle to Flat)"
+        />
+      </div>
+      <div id="fovTag" class="px-2.5 py-1 rounded-md text-xs font-semibold tracking-wide bg-purple-900/60 backdrop-blur-md border border-purple-400/30 text-purple-200 shadow-lg pointer-events-none transition-all duration-150">
+        Normal (60°)
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Header Controls & Info -->
+  <header class="absolute top-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
+    <div class="pointer-events-auto flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-indigo-900/70 border border-indigo-400/30 flex items-center justify-center shadow-lg">
+        <span class="text-sm font-black text-purple-300">BN</span>
+      </div>
+      <div>
+        <h1 class="text-sm font-bold tracking-wider uppercase text-purple-200 drop-shadow">Bleu Nuit Gallery</h1>
+        <p class="text-[11px] text-indigo-300/80">3D Room Experience</p>
+      </div>
+    </div>
+
+    <!-- Quick action buttons -->
+    <div class="pointer-events-auto flex items-center gap-2">
+      <button id="resetCamBtn" class="px-3 py-1.5 rounded-lg bg-indigo-950/70 hover:bg-purple-900/70 active:scale-95 transition-all text-xs border border-purple-500/30 text-purple-200 backdrop-blur-sm flex items-center gap-1.5 shadow-md">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        Reset View
+      </button>
+      <button id="autoRotateBtn" class="px-3 py-1.5 rounded-lg bg-indigo-950/70 hover:bg-purple-900/70 active:scale-95 transition-all text-xs border border-purple-500/30 text-purple-200 backdrop-blur-sm flex items-center gap-1.5 shadow-md">
+        <svg id="rotIcon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <span id="rotText">Auto Orbit</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Bottom Interaction Hint Banner -->
+  <div id="gestureHint" class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-opacity duration-700 opacity-90">
+    <div class="px-4 py-2 rounded-full bg-slate-950/70 border border-purple-500/20 backdrop-blur-md shadow-xl text-center flex items-center gap-2">
+      <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+      <p class="text-xs text-purple-200">
+        <span class="hidden md:inline">Drag to rotate • Scroll to zoom (Wide to Flat)</span>
+        <span class="md:hidden">Swipe to rotate • Pinch to zoom perspective</span>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    window.addEventListener('load', () => {
+      // Setup Three.js scene, camera, renderer
+      const container = document.getElementById('canvas-container');
+      const scene = new THREE.Scene();
+      
+      // Web page background color (darkest blue #07052e)
+      const bgColor = new THREE.Color('#07052e');
+      scene.background = bgColor;
+
+      // Room dimensions (cubic room)
+      const ROOM_SIZE = 10;
+      const HALF_SIZE = ROOM_SIZE / 2;
+
+      // Target focal center
+      const targetPoint = new THREE.Vector3(0, 0, 0);
+
+      // Perspective Camera setup
+      let currentFov = 60;
+      const camera = new THREE.PerspectiveCamera(currentFov, window.innerWidth / window.innerHeight, 0.1, 100);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.05;
+      container.appendChild(renderer.domElement);
+
+      
+      // 1. Procedural Carpet Texture (Accurate organic blue dots on light periwinkle)
+      function createCarpetTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1024;
+        canvas.height = 1024;
+        const ctx = canvas.getContext('2d');
+
+        // Light periwinkle background
+        ctx.fillStyle = '#a8b4e5';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Subtle weave noise
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        for (let i = 0; i < 20000; i++) {
+          const rx = Math.random() * canvas.width;
+          const ry = Math.random() * canvas.height;
+          ctx.fillRect(rx, ry, 2, 2);
+        }
+
+        // Draw organized clusters of royal blue rounded dots
+        const rows = 36;
+        const cols = 36;
+        const stepX = canvas.width / cols;
+        const stepY = canvas.height / rows;
+
+        ctx.fillStyle = '#2b3990'; // deep blue dot
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            // Cluster of 2-3 organic dots with slight angle
+            const cx = c * stepX + (r % 2 === 0 ? 0 : stepX * 0.5) + (Math.sin(r + c) * 3);
+            const cy = r * stepY + (Math.cos(r * 2) * 2);
+
+            // primary dot
+            ctx.beginPath();
+            ctx.arc(cx, cy, 4 + (Math.sin(r) * 1.5), 0, Math.PI * 2);
+            ctx.fill();
+
+            // companion sub-dot
+            ctx.fillStyle = '#1e2b7a';
+            ctx.beginPath();
+            ctx.arc(cx + 6, cy + 4, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            if ((r + c) % 3 === 0) {
+              ctx.beginPath();
+              ctx.arc(cx - 5, cy + 5, 3, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.fillStyle = '#2b3990';
+          }
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(1, 1);
+        return texture;
+      }
+
+      // 2. Procedural Landscape Portrait (Rolling green hills, winding path, pink sun in purple sky)
+      function createPaintingTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1024;
+        canvas.height = 768;
+        const ctx = canvas.getContext('2d');
+
+        // Sky: Deep purple gradient
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.6);
+        skyGrad.addColorStop(0, '#2d0947');
+        skyGrad.addColorStop(1, '#4a156e');
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Glowing pink/salmon sun
+        const sunX = canvas.width * 0.5;
+        const sunY = canvas.height * 0.32;
+        const sunRad = 70;
+
+        // Sun subtle aura
+        const auraGrad = ctx.createRadialGradient(sunX, sunY, sunRad * 0.7, sunX, sunY, sunRad * 2);
+        auraGrad.addColorStop(0, 'rgba(255, 120, 140, 0.4)');
+        auraGrad.addColorStop(1, 'rgba(255, 120, 140, 0)');
+        ctx.fillStyle = auraGrad;
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, sunRad * 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Sun disc
+        ctx.fillStyle = '#ff7b77';
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, sunRad, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Background gentle rolling hills (lime-green)
+        ctx.fillStyle = '#48ca4b';
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height * 0.58);
+        ctx.quadraticCurveTo(canvas.width * 0.25, canvas.height * 0.44, canvas.width * 0.5, canvas.height * 0.52);
+        ctx.quadraticCurveTo(canvas.width * 0.75, canvas.height * 0.42, canvas.width, canvas.height * 0.5);
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.lineTo(0, canvas.height);
+        ctx.closePath();
+        ctx.fill();
+
+        // Foreground hills (rich vibrant green)
+        ctx.fillStyle = '#2fb032';
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height * 0.52);
+        ctx.quadraticCurveTo(canvas.width * 0.35, canvas.height * 0.6, canvas.width * 0.5, canvas.height * 0.5);
+        ctx.lineTo(canvas.width * 0.5, canvas.height);
+        ctx.lineTo(0, canvas.height);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#2db834';
+        ctx.beginPath();
+        ctx.moveTo(canvas.width * 0.5, canvas.height * 0.5);
+        ctx.quadraticCurveTo(canvas.width * 0.7, canvas.height * 0.45, canvas.width, canvas.height * 0.6);
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.lineTo(canvas.width * 0.5, canvas.height);
+        ctx.closePath();
+        ctx.fill();
+
+        // Light curving winding path down the center
+        ctx.fillStyle = '#d5d4e6';
+        ctx.beginPath();
+        ctx.moveTo(canvas.width * 0.52, canvas.height * 0.5);
+        ctx.bezierCurveTo(
+          canvas.width * 0.44, canvas.height * 0.62,
+          canvas.width * 0.56, canvas.height * 0.72,
+          canvas.width * 0.30, canvas.height
+        );
+        ctx.lineTo(canvas.width * 0.12, canvas.height);
+        ctx.bezierCurveTo(
+          canvas.width * 0.36, canvas.height * 0.72,
+          canvas.width * 0.40, canvas.height * 0.6,
+          canvas.width * 0.49, canvas.height * 0.5
+        );
+        ctx.closePath();
+        ctx.fill();
+
+        return new THREE.CanvasTexture(canvas);
+      }
+
+      // 3. Procedural "BLEU NUIT" Back Wall Signboard
+      function createBleuNuitTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1200;
+        canvas.height = 1000;
+        const ctx = canvas.getContext('2d');
+
+        // Deep blue-black wall texture background
+        ctx.fillStyle = '#06041a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Subtle textured wall noise
+        ctx.fillStyle = 'rgba(40, 20, 90, 0.2)';
+        for (let i = 0; i < 40000; i++) {
+          ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 2, 2);
+        }
+
+        // Draw "BLEU NUIT" bold athletic/beveled marquee letters
+        function drawGlitterText(text, x, y, fontSize, letterSpacing) {
+          ctx.font = `900 ${fontSize}px "Impact", "Arial Black", sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+
+          // Outer glowing bevel / neon frame outline
+          ctx.strokeStyle = '#4338ca';
+          ctx.lineWidth = 26;
+          ctx.lineJoin = 'miter';
+          ctx.strokeText(text, x, y);
+
+          ctx.strokeStyle = '#818cf8';
+          ctx.lineWidth = 14;
+          ctx.strokeText(text, x, y);
+
+          ctx.strokeStyle = '#c084fc';
+          ctx.lineWidth = 6;
+          ctx.strokeText(text, x, y);
+
+          // Dark backing for letters
+          ctx.fillStyle = '#2e1065';
+          ctx.fillText(text, x, y);
+
+          // Save clipping path to paint glitter texture inside the letters
+          ctx.save();
+          // We can't clip easily with native canvas fillText directly without path,
+          // so we render stippled purple glitter inside stroke bounds
+          const charMetrics = ctx.measureText(text);
+          const boundLeft = x - charMetrics.width / 2 - 20;
+          const boundRight = x + charMetrics.width / 2 + 20;
+          const boundTop = y - fontSize / 2 - 20;
+          const boundBottom = y + fontSize / 2 + 20;
+
+          // Temporary canvas for letter mask
+          const maskCanvas = document.createElement('canvas');
+          maskCanvas.width = canvas.width;
+          maskCanvas.height = canvas.height;
+          const mctx = maskCanvas.getContext('2d');
+          mctx.font = ctx.font;
+          mctx.textAlign = 'center';
+          mctx.textBaseline = 'middle';
+          mctx.fillStyle = '#ffffff';
+          mctx.fillText(text, x, y);
+
+          // Render shimmering purple/violet glitter onto the main canvas through the mask
+          const maskData = mctx.getImageData(0, 0, canvas.width, canvas.height).data;
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const d = imgData.data;
+
+          for (let py = Math.max(0, Math.floor(boundTop)); py < Math.min(canvas.height, Math.ceil(boundBottom)); py++) {
+            for (let px = Math.max(0, Math.floor(boundLeft)); px < Math.min(canvas.width, Math.ceil(boundRight)); px++) {
+              const idx = (py * canvas.width + px) * 4;
+              if (maskData[idx + 3] > 100) {
+                // Inside text: create dynamic purple speckled glitter
+                const rand = Math.random();
+                if (rand > 0.45) {
+                  // Bright violet/magenta sparkles
+                  const brightness = Math.random();
+                  if (brightness > 0.85) {
+                    d[idx] = 230;     // R
+                    d[idx + 1] = 190; // G
+                    d[idx + 2] = 255; // B
+                  } else if (brightness > 0.5) {
+                    d[idx] = 168;
+                    d[idx + 1] = 85;
+                    d[idx + 2] = 247;
+                  } else {
+                    d[idx] = 120;
+                    d[idx + 1] = 40;
+                    d[idx + 2] = 200;
+                  }
+                  d[idx + 3] = 255;
+                }
+              }
+            }
+          }
+          ctx.putImageData(imgData, 0, 0);
+          ctx.restore();
+        }
+
+        // Draw BLEU on top, NUIT on bottom
+        drawGlitterText('BLEU', canvas.width / 2, canvas.height * 0.33, 290);
+        drawGlitterText('NUIT', canvas.width / 2, canvas.height * 0.70, 290);
+
+        return new THREE.CanvasTexture(canvas);
+      }
+
+      
+      // Flat, even lighting
+      const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.95);
+      scene.add(ambientLight);
+
+      const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.4);
+      dirLight1.position.set(0, 8, 8);
+      scene.add(dirLight1);
+
+      const dirLight2 = new THREE.DirectionalLight(0xa5b4fc, 0.35);
+      dirLight2.position.set(0, -6, 6);
+      scene.add(dirLight2);
+
+      // Room materials
+      const navyFloorCeilMat = new THREE.MeshLambertMaterial({ 
+        color: 0x110e52, 
+        roughness: 0.9, 
+        metalness: 0.05 
+      });
+
+      const blueSideWallMat = new THREE.MeshLambertMaterial({ 
+        color: 0x191475, 
+        roughness: 0.95 
+      });
+
+      // Floor
+      const floorGeo = new THREE.PlaneGeometry(ROOM_SIZE, ROOM_SIZE);
+      const floor = new THREE.Mesh(floorGeo, navyFloorCeilMat);
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.y = -HALF_SIZE;
+      scene.add(floor);
+
+      // Ceiling
+      const ceiling = new THREE.Mesh(floorGeo, navyFloorCeilMat);
+      ceiling.rotation.x = Math.PI / 2;
+      ceiling.position.y = HALF_SIZE;
+      scene.add(ceiling);
+
+      // Left Wall
+      const wallGeo = new THREE.PlaneGeometry(ROOM_SIZE, ROOM_SIZE);
+      const leftWall = new THREE.Mesh(wallGeo, blueSideWallMat);
+      leftWall.rotation.y = Math.PI / 2;
+      leftWall.position.x = -HALF_SIZE;
+      scene.add(leftWall);
+
+      // Right Wall
+      const rightWall = new THREE.Mesh(wallGeo, blueSideWallMat);
+      rightWall.rotation.y = -Math.PI / 2;
+      rightWall.position.x = HALF_SIZE;
+      scene.add(rightWall);
+
+      // Back Wall (BLEU NUIT graphic billboard)
+      const bleuNuitTex = createBleuNuitTexture();
+      const backWallMat = new THREE.MeshBasicMaterial({ 
+        map: bleuNuitTex 
+      });
+      const backWall = new THREE.Mesh(wallGeo, backWallMat);
+      backWall.position.z = -HALF_SIZE;
+      scene.add(backWall);
+
+      // Centered Carpet on the floor
+      const carpetTex = createCarpetTexture();
+      const carpetGeo = new THREE.PlaneGeometry(6.6, 4.4);
+      const carpetMat = new THREE.MeshLambertMaterial({
+        map: carpetTex,
+        roughness: 0.85
+      });
+      const carpet = new THREE.Mesh(carpetGeo, carpetMat);
+      carpet.rotation.x = -Math.PI / 2;
+      carpet.position.set(0, -HALF_SIZE + 0.015, 0.4);
+      scene.add(carpet);
+
+      const paintingTex = createPaintingTexture();
+      const frameGroup = new THREE.Group();
+
+      function createWallArt() {
+        const artRoot = new THREE.Group();
+        
+        // Canvas painting
+        const pGeo = new THREE.PlaneGeometry(2.6, 1.95);
+        const pMat = new THREE.MeshBasicMaterial({ map: paintingTex });
+        const pMesh = new THREE.Mesh(pGeo, pMat);
+        pMesh.position.z = 0.05;
+        artRoot.add(pMesh);
+
+        // Frame border (Navy frame)
+        const frameMat = new THREE.MeshStandardMaterial({ 
+          color: 0x1f1966, 
+          roughness: 0.5,
+          metalness: 0.2
+        });
+        const fBorder = 0.1;
+        const fWidth = 2.6 + fBorder * 2;
+        const fHeight = 1.95 + fBorder * 2;
+        const fDepth = 0.09;
+        
+        // Outer box with recessed front
+        const frameBoxGeo = new THREE.BoxGeometry(fWidth, fHeight, fDepth);
+        const frameMesh = new THREE.Mesh(frameBoxGeo, frameMat);
+        frameMesh.position.z = 0.01;
+        artRoot.add(frameMesh);
+
+        return artRoot;
+      }
+      function createTranslucentPurpleArmchair() {
+        const chairGroup = new THREE.Group();
+
+        // Translucent purple acrylic material
+        const acrylicMat = new THREE.MeshPhysicalMaterial({
+          color: 0x9333ea,
+          emissive: 0x3b0764,
+          emissiveIntensity: 0.18,
+          transparent: true,
+          opacity: 0.62,
+          roughness: 0.12,
+          metalness: 0.05,
+          transmission: 0.55, // acrylic glass feel
+          ior: 1.45,
+          depthWrite: false
+        });
+
+        // Seat base cushion
+        const seatGeo = new THREE.BoxGeometry(1.6, 0.22, 1.5);
+        const seat = new THREE.Mesh(seatGeo, acrylicMat);
+        seat.position.y = 0.6;
+        chairGroup.add(seat);
+
+        // High Backrest
+        const backGeo = new THREE.BoxGeometry(1.6, 1.9, 0.2);
+        const backrest = new THREE.Mesh(backGeo, acrylicMat);
+        backrest.position.set(0, 1.55, -0.65);
+        // Subtle tilt backwards
+        backrest.rotation.x = 0.07;
+        chairGroup.add(backrest);
+
+        // Armrests (Left & Right)
+        const armGeo = new THREE.BoxGeometry(0.2, 0.75, 1.5);
+        
+        const leftArm = new THREE.Mesh(armGeo, acrylicMat);
+        leftArm.position.set(-0.8, 0.95, 0);
+        chairGroup.add(leftArm);
+
+        const rightArm = new THREE.Mesh(armGeo, acrylicMat);
+        rightArm.position.set(0.8, 0.95, 0);
+        chairGroup.add(rightArm);
+
+        // Sleek legs (translucent tinted studs/supports)
+        const legGeo = new THREE.CylinderGeometry(0.045, 0.035, 0.6, 16);
+        const legPositions = [
+          [-0.7, 0.3, 0.6],
+          [0.7, 0.3, 0.6],
+          [-0.7, 0.3, -0.6],
+          [0.7, 0.3, -0.6]
+        ];
+
+        legPositions.forEach(([lx, ly, lz]) => {
+          const leg = new THREE.Mesh(legGeo, acrylicMat);
+          leg.position.set(lx, ly, lz);
+          chairGroup.add(leg);
+        });
+
+        // Position armchair centered on the floor & rotate 180 degrees to face the viewer
+        chairGroup.rotation.y = Math.PI;
+        chairGroup.position.set(0, -HALF_SIZE, 0.4);
+        return chairGroup;
+      }
+
+      const armchair = createTranslucentPurpleArmchair();
+      scene.add(armchair);
+
+      // Spherical coordinates for camera navigation around targetPoint
+      let spherical = {
+        radius: 10.5,
+        theta: 0,              // azimuth horizontal angle (radians)
+        phi: Math.PI * 0.48    // polar elevation angle (radians)
+      };
+
+      let isDragging = false;
+      let prevMousePos = { x: 0, y: 0 };
+      let initialPinchDist = null;
+      let autoRotate = false;
+
+      // Distance compensation factor: Keep the room framing consistent
+      // while adjusting field of view from wide-angle to telephoto/flat
+      const BASE_FOV = 60;
+      const BASE_RADIUS = 10.5;
+
+      function updateCameraTransform() {
+        // Clamp angles to stay inside aesthetic viewing bounds
+        spherical.phi = Math.max(0.25 * Math.PI, Math.min(0.60 * Math.PI, spherical.phi));
+        spherical.theta = Math.max(-0.65 * Math.PI, Math.min(0.65 * Math.PI, spherical.theta));
+
+        // When FOV decreases (flatter perspective), we back up the camera to compensate framing
+        // tan(fov/2) ratio keeps object scale perceptually stable while altering perspective depth!
+        const fovRad = THREE.MathUtils.degToRad(currentFov);
+        const baseFovRad = THREE.MathUtils.degToRad(BASE_FOV);
+        const distRatio = Math.tan(baseFovRad / 2) / Math.tan(fovRad / 2);
+        
+        const effectiveRadius = BASE_RADIUS * distRatio;
+
+        camera.fov = currentFov;
+        camera.updateProjectionMatrix();
+
+        camera.position.x = targetPoint.x + effectiveRadius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+        camera.position.y = targetPoint.y + effectiveRadius * Math.cos(spherical.phi);
+        camera.position.z = targetPoint.z + effectiveRadius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+
+        camera.lookAt(targetPoint);
+      }
+
+      updateCameraTransform();
+
+      // UI Slider and tag update
+      const fovSlider = document.getElementById('fovSlider');
+      const fovTag = document.getElementById('fovTag');
+
+      function updateFovDisplay() {
+        fovSlider.value = currentFov;
+        let label = 'Normal';
+        if (currentFov >= 75) label = 'Wide Angle';
+        else if (currentFov <= 35) label = 'Flat / Tele';
+        else if (currentFov < 50) label = 'Isometric Feel';
+        fovTag.textContent = `${label} (${Math.round(currentFov)}°)`;
+      }
+
+      fovSlider.addEventListener('input', (e) => {
+        currentFov = parseFloat(e.target.value);
+        updateFovDisplay();
+        updateCameraTransform();
+      });
+
+      const dom = renderer.domElement;
+
+      // Mouse drag controls
+      dom.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        prevMousePos = { x: e.clientX, y: e.clientY };
+        autoRotate = false;
+        updateRotateButtonUI();
+      });
+
+      window.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - prevMousePos.x;
+        const dy = e.clientY - prevMousePos.y;
+
+        spherical.theta -= dx * 0.006;
+        spherical.phi -= dy * 0.004;
+
+        prevMousePos = { x: e.clientX, y: e.clientY };
+        updateCameraTransform();
+      });
+
+      // Scroll wheel zoom to adjust FOV perspective (from wide angle to flat)
+      window.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const delta = e.deltaY * 0.05;
+        currentFov = Math.max(22, Math.min(92, currentFov + delta));
+        updateFovDisplay();
+        updateCameraTransform();
+      }, { passive: false });
+
+      // Touch gesture support: single finger rotate, two finger pinch zoom
+      dom.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          isDragging = true;
+          prevMousePos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+          autoRotate = false;
+          updateRotateButtonUI();
+        } else if (e.touches.length === 2) {
+          isDragging = false;
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          initialPinchDist = Math.hypot(dx, dy);
+        }
+      }, { passive: true });
+
+      dom.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1 && isDragging) {
+          const dx = e.touches[0].clientX - prevMousePos.x;
+          const dy = e.touches[0].clientY - prevMousePos.y;
+
+          spherical.theta -= dx * 0.007;
+          spherical.phi -= dy * 0.005;
+
+          prevMousePos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+          updateCameraTransform();
+        } else if (e.touches.length === 2 && initialPinchDist) {
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          const dist = Math.hypot(dx, dy);
+          const diff = (initialPinchDist - dist) * 0.12;
+
+          currentFov = Math.max(22, Math.min(92, currentFov + diff));
+          initialPinchDist = dist;
+          updateFovDisplay();
+          updateCameraTransform();
+        }
+      }, { passive: true });
+
+      dom.addEventListener('touchend', (e) => {
+        if (e.touches.length === 0) {
+          isDragging = false;
+          initialPinchDist = null;
+        } else if (e.touches.length === 1) {
+          prevMousePos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+          initialPinchDist = null;
+        }
+      });
+
+      const resetBtn = document.getElementById('resetCamBtn');
+      resetBtn.addEventListener('click', () => {
+        currentFov = 60;
+        spherical.theta = 0;
+        spherical.phi = Math.PI * 0.48;
+        autoRotate = false;
+        updateRotateButtonUI();
+        updateFovDisplay();
+        updateCameraTransform();
+      });
+
+      const autoRotateBtn = document.getElementById('autoRotateBtn');
+      const rotText = document.getElementById('rotText');
+      function updateRotateButtonUI() {
+        if (autoRotate) {
+          autoRotateBtn.classList.add('bg-purple-700/80', 'border-purple-300');
+          rotText.textContent = 'Pause Orbit';
+        } else {
+          autoRotateBtn.classList.remove('bg-purple-700/80', 'border-purple-300');
+          rotText.textContent = 'Auto Orbit';
+        }
+      }
+
+      autoRotateBtn.addEventListener('click', () => {
+        autoRotate = !autoRotate;
+        updateRotateButtonUI();
+      });
+
+      // Fade out gesture hint after 6 seconds
+      setTimeout(() => {
+        const hint = document.getElementById('gestureHint');
+        if (hint) {
+          hint.classList.add('opacity-0');
+        }
+      }, 6000);
+
+      // Handle window resizing dynamically
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        updateCameraTransform();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      let clock = new THREE.Clock();
+
+      function animate() {
+        requestAnimationFrame(animate);
+
+        const delta = clock.getDelta();
+
+        // Subtle slow auto rotation if enabled
+        if (autoRotate) {
+          spherical.theta += delta * 0.25;
+          // Smooth sway around the room
+          spherical.phi = (Math.PI * 0.48) + Math.sin(clock.getElapsedTime() * 0.6) * 0.05;
+          updateCameraTransform();
+        }
+
+        renderer.render(scene, camera);
+      }
+
+      // Start loop
+      animate();
+    });
+  </script>
+</body>
+</html>
