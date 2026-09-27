@@ -6,7 +6,7 @@ and an opaque upholstered armchair standing off-centre near the right wall.
 
 The sign and the landscape paintings on the side walls are not image files: `src/textures.js` draws
 them at load time onto `<canvas>` elements and uses them as Three.js textures. The carpet is the
-exception: it is a real image, `src/assets/carpet.png`, imported through the build.
+exception: it is a real image, `src/assets/carpet.webp`, imported through the build.
 
 ## Running it
 
@@ -86,7 +86,8 @@ are not loaded by the page.
 | File | What it is | Used to check |
 |---|---|---|
 | `reference/signage-bleu-nuit.png` | Photo of the real BLEU NUIT sign: purple glitter-filled block letters with a lighter violet outline, stacked BLEU over NUIT on near-black. 1600×1200. | `createBleuNuitTexture()` in `src/textures.js`, the back wall. The letter outlines in `src/letters.js` are traced from this photo |
-| `reference/carpet-pattern.png` | An earlier carpet photo: light periwinkle dots in diagonal clusters on a deep royal blue ground. 1448×1086. **Superseded** by `src/assets/carpet.png` (see Recently closed). Kept for history. | Nothing now |
+| `reference/carpet-pattern.png` | An earlier carpet photo: light periwinkle dots in diagonal clusters on a deep royal blue ground. 1448×1086. **Superseded** by `src/assets/carpet.webp` (see Recently closed). Kept for history. | Nothing now |
+| `reference/carpet-texture-source.png` | The carpet texture PAUL-ERIC supplied, lossless, 1448×1086, 2.7 MB. Not loaded by the page: `src/assets/carpet.webp` is encoded from it. Re-encode from this if the carpet ever needs to change. | Source for `carpet.webp` |
 | `reference/tv-capture.jpg` | The original TV capture the whole project recreates: a corner view of the room from an oblique camera, sign wall on the left, painting wall on the right, an opaque lilac armchair near the right wall. 1206×880. | Chair placement, camera angle, the chair, the wall texture. Measurements are in `reference/capture-geometry.md` |
 | `reference/swatch-navy-dark.png` | Flat dark navy swatch, measured at about `#0f084f`. | Room surface colours |
 | `reference/swatch-indigo.png` | Flat indigo/violet swatch, measured at about `#261987`. | Room surface colours |
@@ -101,7 +102,7 @@ Vite fingerprints them into `docs/assets/` on build.
 
 | File | What it is |
 |---|---|
-| `src/assets/carpet.png` | The floor carpet: light periwinkle ground (`#8790c6`) with royal-blue dots (`#2c38ac`), about 28% dot coverage. 1448×1086 (4:3), 2.7 MB. Not seamless, so it is used once and not tiled (see below). |
+| `src/assets/carpet.webp` | The floor carpet: light periwinkle ground (`#8790c6`) with royal-blue dots (`#2c38ac`), about 28% dot coverage. 1448×1086 (4:3), 218 KB. Not seamless, so it is used once and not tiled (see below). Encoded from `reference/carpet-texture-source.png`, the lossless 2.7 MB original. |
 
 ## Known gaps
 
@@ -145,7 +146,7 @@ several field-of-view settings.
   no longer the carpet's authority, and the light floor is intended. Do not "fix" it back to the
   dark version, and do not treat the photo-versus-mockup note that used to be here as current.
 
-  It is loaded from `src/assets/carpet.png` (originally `assets/carpet.png`, before the Vite move), not generated, because the image is exact and it is a
+  It is loaded from `src/assets/carpet.webp` (originally the 2.7 MB `assets/carpet.png`), not generated, because the image is exact and it is a
   finished asset. It loads asynchronously: the carpet material starts as flat periwinkle (`#8790c6`,
   also what remains if the load fails), and the texture is assigned in the loader callback with
   `needsUpdate` set, so there is no blank first paint. The image is **not seamless** (its wrap-around
@@ -173,3 +174,11 @@ several field-of-view settings.
   back (`getImageData`), so the Canvas2D `willReadFrequently` console hint is gone. What is not
   reproduced: the photo's slight 3D depth and glow around the letter edges, and the very bright
   pin-point sparkles, which are averaged away at the size the wall is shown.
+
+- **The carpet image went from 2.7 MB to 218 KB.** It was essentially the whole page weight next to a 137 KB
+  gzipped script. It is now a full-resolution (1448×1086) WebP at quality 80, encoded from the lossless
+  original, which is kept as `reference/carpet-texture-source.png`. Against the original it has a mean
+  absolute error of 3.1 of 255 (PSNR 35.8 dB); in the rendered room the carpet differs from the PNG
+  version by under 1 of 255 on average. Full resolution was kept on purpose so it stays sharp on
+  high-density screens; a 1024-wide version would be about 170 KB at visibly lower quality. WebP is
+  supported by every current browser.

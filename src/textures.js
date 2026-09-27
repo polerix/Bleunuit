@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BLEU_NUIT_LETTERS } from './letters.js';
-import carpetUrl from './assets/carpet.png';
+import carpetUrl from './assets/carpet.webp';
 
 // Procedural textures for the room, drawn onto <canvas> elements at load time.
 
@@ -222,7 +222,7 @@ export function createBleuNuitTexture() {
   return new THREE.CanvasTexture(canvas);
 }
 
-// The carpet is a real image (src/assets/carpet.png, 1448 x 1086): light periwinkle ground with
+// The carpet is a real image (src/assets/carpet.webp, 1448 x 1086): light periwinkle ground with
 // royal-blue dots. It loads asynchronously, so the caller gets a texture via onLoad; until then (or if
 // the load fails) the carpet material stays flat periwinkle.
 export function loadCarpetTexture(renderer, onLoad, onError) {
