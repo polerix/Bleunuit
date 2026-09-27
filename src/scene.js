@@ -5,16 +5,17 @@ import * as THREE from 'three';
 // in the room, so it stays off. Import this module before creating any colours.
 THREE.ColorManagement.enabled = false;
 
-// Renderer, camera, background and lights.
-export function createStage(container) {
+// Renderer, camera, background and lights. The camera's aspect is fixed at ASPECT_RATIO (src/layout.js):
+// the room is always framed at that ratio, so the camera never needs to know the window's own shape,
+// only how many pixels its fixed-ratio frame currently has. The caller sizes the renderer to that frame.
+export function createStage(container, aspect) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#07052e');   // darkest blue, matches the page background
 
-  const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+  const camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 100);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.outputColorSpace = THREE.LinearSRGBColorSpace;   // no sRGB encode on output, as in r128
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;

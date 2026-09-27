@@ -42,6 +42,29 @@ plain CSS for the page chrome. There are no CDN requests.
 | `src/controls.js` | Orbit camera, FOV zoom, mouse and touch handling |
 | `src/ui.js` | Slider, buttons and hint behaviour |
 | `src/style.css` | All page styling (this replaced the Tailwind CDN) |
+| `src/layout.js` | `ASPECT_RATIO` and the letterbox/pillarbox sizing described below |
+
+### Aspect ratio: fixed at 4:3, not the window's own shape
+
+The room is framed at a constant **4:3 landscape** (the original broadcast's ratio), not stretched to
+fill the browser window. `#stage` in `app.html` is sized in JS (`layoutStage()` in `src/layout.js`) to
+the largest 4:3 box that fits the window, centred; whatever doesn't fit shows as bars in the page
+background colour either above and below (a tall window: letterboxed) or left and right (a wide window:
+pillarboxed). The camera's own aspect is fixed at `ASPECT_RATIO` too (`src/scene.js`), so it never reads
+the window's shape, only how many pixels its always-4:3 frame currently has; resizing the window changes
+resolution, not framing. `ASPECT_RATIO = 4 / 3` is the one place this is set — change it to `3 / 4` for
+3:4 portrait and nothing else needs to change.
+
+All of the UI chrome (the header, the FOV slider, the gesture hint) is inside `#stage` and positioned
+against its edges, not the window's, and is sized in `cqh`/`cqw` (percent of the frame's own height and
+width, via `container-type: size` on `#stage`) rather than fixed `rem`, so it scales down on a short
+frame instead of overflowing it. That matters here specifically: on a tall phone in portrait, fitting a
+4:3-landscape frame into a narrow, tall window makes the frame itself short (a phone at 390x844 gets a
+390x293 frame), far shorter than the chrome was sized for when it simply filled the window. Before this,
+the FOV slider ran below the frame into the bottom bar and the header sat over the room. Checked at
+1400x900 and 900x1000 (desktop), 390x844 and 844x390 (a phone in each orientation, live-resized between
+them and reloaded fresh at each), and 800x800: the frame is exactly 4:3 and centred in every case, and
+the header, FOV slider and hint all sit fully inside it with no overlap.
 
 ### Colour setup: keep it as is
 

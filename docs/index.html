@@ -4,61 +4,67 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
   <title>Bleu Nuit - Interactive 3D Room</title>
-  <script type="module" crossorigin src="/Bleunuit/assets/app-BeWNnUxe.js"></script>
-  <link rel="stylesheet" crossorigin href="/Bleunuit/assets/app-CkEiimKK.css">
+  <script type="module" crossorigin src="/Bleunuit/assets/app-D8jDgxGL.js"></script>
+  <link rel="stylesheet" crossorigin href="/Bleunuit/assets/app-CvRQL1Za.css">
 </head>
 <body>
 
-  <div id="canvas-container"></div>
+  <!-- The room is framed at a fixed aspect ratio (src/layout.js) and letterboxed/pillarboxed to fit the
+       window; #stage is sized in JS to that box, and everything below -- the canvas and all the UI
+       chrome -- is positioned against #stage's edges, not the window's, so none of it floats over the
+       bars. -->
+  <div id="stage">
+    <div id="canvas-container"></div>
 
-  <!-- Perspective control indicator on the left -->
-  <div class="fov">
-    <div class="fov__row">
-      <div class="fov__track">
-        <input
-          id="fovSlider"
-          type="range"
-          min="22"
-          max="92"
-          value="44"
-          class="custom-range-slider"
-          title="Perspective (Wide Angle to Flat)"
-        />
-      </div>
-      <div id="fovTag" class="fov__tag">Isometric Feel (44°)</div>
-    </div>
-  </div>
-
-  <!-- Top header: title and quick actions -->
-  <header class="header">
-    <div class="brand">
-      <div class="brand__mark"><span>BN</span></div>
-      <div>
-        <h1 class="brand__title">Bleu Nuit Gallery</h1>
-        <p class="brand__sub">3D Room Experience</p>
+    <!-- Perspective control indicator on the left -->
+    <div class="fov">
+      <div class="fov__row">
+        <div class="fov__track">
+          <input
+            id="fovSlider"
+            type="range"
+            min="22"
+            max="92"
+            value="44"
+            class="custom-range-slider"
+            title="Perspective (Wide Angle to Flat)"
+          />
+        </div>
+        <div id="fovTag" class="fov__tag">Isometric Feel (44°)</div>
       </div>
     </div>
 
-    <div class="actions">
-      <button id="resetCamBtn" class="btn">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-        Reset View
-      </button>
-      <button id="autoRotateBtn" class="btn">
-        <svg id="rotIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-        <span id="rotText">Auto Orbit</span>
-      </button>
-    </div>
-  </header>
+    <!-- Top header: title and quick actions -->
+    <header class="header">
+      <div class="brand">
+        <div class="brand__mark"><span>BN</span></div>
+        <div>
+          <h1 class="brand__title">Bleu Nuit Gallery</h1>
+          <p class="brand__sub">3D Room Experience</p>
+        </div>
+      </div>
 
-  <!-- Bottom interaction hint -->
-  <div id="gestureHint" class="hint">
-    <div class="hint__pill">
-      <span class="hint__dot"></span>
-      <p class="hint__text">
-        <span class="pointer">Drag to rotate • Scroll to zoom (Wide to Flat)</span>
-        <span class="touch">Swipe to rotate • Pinch to zoom perspective</span>
-      </p>
+      <div class="actions">
+        <button id="resetCamBtn" class="btn">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+          Reset View
+        </button>
+        <button id="autoRotateBtn" class="btn">
+          <svg id="rotIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span id="rotText">Auto Orbit</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Bottom interaction hint -->
+    <div id="gestureHint" class="hint">
+      <div class="hint__pill">
+        <span class="hint__dot"></span>
+        <p class="hint__text">
+          <span class="pointer">Drag to rotate • Scroll to zoom (Wide to Flat)</span>
+          <span class="touch">Swipe to rotate • Pinch to zoom perspective</span>
+        </p>
+      </div>
     </div>
   </div>
 

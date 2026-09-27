@@ -4,9 +4,11 @@ import { buildRoom, HALF_SIZE } from './room.js';
 import { createArmchair } from './chair.js';
 import { createControls, DEFAULT_VIEW } from './controls.js';
 import { createUI } from './ui.js';
+import { ASPECT_RATIO, layoutStage } from './layout.js';
 
+const stage = document.getElementById('stage');
 const container = document.getElementById('canvas-container');
-const { scene, camera, renderer } = createStage(container);
+const { scene, camera, renderer } = createStage(container, ASPECT_RATIO);
 
 const room = buildRoom(scene, renderer);
 const chair = createArmchair();
@@ -22,12 +24,17 @@ const controls = createControls({
 ui.bind(controls);
 ui.showFov(DEFAULT_VIEW.fov);
 
-// Handle window resizing dynamically
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  controls.update();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
+// Fit #stage to the window at ASPECT_RATIO (letterboxed or pillarboxed) and size the renderer to match.
+// The camera's aspect never changes here: it is fixed at ASPECT_RATIO in createStage(), because the
+// frame is always that ratio regardless of the window's own shape.
+function resize() {
+  const { width, height } = layoutStage(stage);
+  renderer.setSize(width, height);
+}
+
+resize();
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', resize);
 
 let last = performance.now();
 
