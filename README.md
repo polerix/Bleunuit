@@ -81,6 +81,7 @@ are not loaded by the page.
 |---|---|---|
 | `reference/signage-bleu-nuit.png` | Photo of the real BLEU NUIT sign: purple glitter-filled block letters with a lighter violet outline, stacked BLEU over NUIT on near-black. 1600×1200. | `createBleuNuitTexture()` in `src/textures.js`, the back wall. The letter outlines in `src/letters.js` are traced from this photo |
 | `reference/carpet-pattern.png` | An earlier carpet photo: light periwinkle dots in diagonal clusters on a deep royal blue ground. 1448×1086. **Superseded** by `src/assets/carpet.png` (see Recently closed). Kept for history. | Nothing now |
+| `reference/tv-capture.jpg` | The original TV capture the whole project recreates: a corner view of the room from an oblique camera, sign wall on the left, painting wall on the right, an opaque lilac armchair near the right wall. 1206×880. | Chair placement, camera angle, the chair, the wall texture. Measurements are in `reference/capture-geometry.md` |
 | `reference/swatch-navy-dark.png` | Flat dark navy swatch, measured at about `#0f084f`. | Room surface colours |
 | `reference/swatch-indigo.png` | Flat indigo/violet swatch, measured at about `#261987`. | Room surface colours |
 

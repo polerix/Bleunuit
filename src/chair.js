@@ -1,6 +1,14 @@
 import * as THREE from 'three';
 import { HALF_SIZE } from './room.js';
 
+// Where the chair stands and which way it faces, recovered from the TV capture (see
+// reference/capture-geometry.md for the measurements and how far to trust them). The rug centre is at
+// (0, 0.4); the chair is about 2.2 units to the right of it and 2.2 toward the viewer. Its yaw turns its
+// front (+Z in the chair's own frame) to face the back-left, (-0.77, -0.63) in world X/Z, with its back
+// toward the right wall's side. Position is good to about +/- 0.7 units; the yaw to about +/- 20 degrees.
+export const CHAIR_POSITION = { x: 2.2, z: 2.6 };
+export const CHAIR_YAW = THREE.MathUtils.degToRad(-129);
+
 export function createTranslucentPurpleArmchair() {
   const chairGroup = new THREE.Group();
 
@@ -58,8 +66,8 @@ export function createTranslucentPurpleArmchair() {
     chairGroup.add(leg);
   });
 
-  // Position armchair centered on the floor & rotate 180 degrees to face the viewer
-  chairGroup.rotation.y = Math.PI;
-  chairGroup.position.set(0, -HALF_SIZE, 0.4);
+  // Stand it where the capture puts it, turned as the capture shows
+  chairGroup.rotation.y = CHAIR_YAW;
+  chairGroup.position.set(CHAIR_POSITION.x, -HALF_SIZE, CHAIR_POSITION.z);
   return chairGroup;
 }
