@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BLEU_NUIT_LETTERS } from './letters.js';
-import carpetUrl from './assets/carpet.webp';
+import carpetUrl from './assets/carpet.svg';
 
 // Procedural textures for the room, drawn onto <canvas> elements at load time.
 
@@ -222,11 +222,21 @@ export function createBleuNuitTexture() {
   return new THREE.CanvasTexture(canvas);
 }
 
-// The carpet is a real image (src/assets/carpet.webp, 1448 x 1086): light periwinkle ground with
-// royal-blue dots. It loads asynchronously, so the caller gets a texture via onLoad; until then (or if
-// the load fails) the carpet material stays flat periwinkle.
+// The carpet is a vector image (src/assets/carpet.svg, 1448 x 1086 user units): light periwinkle ground
+// with royal-blue dots, editable in Illustrator. WebGL needs a raster, so it is drawn onto a canvas at
+// load (RASTER_SCALE times its size). It loads asynchronously, so the caller gets a texture via onLoad;
+// until then (or if the load fails) the carpet material stays flat periwinkle.
+const RASTER_SCALE = 1;
+
 export function loadCarpetTexture(renderer, onLoad, onError) {
-  new THREE.TextureLoader().load(carpetUrl, (tex) => {
+  const img = new Image();
+  img.onerror = onError;
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.naturalWidth * RASTER_SCALE);
+    canvas.height = Math.round(img.naturalHeight * RASTER_SCALE);
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    const tex = new THREE.CanvasTexture(canvas);
     // The image is not seamless (dots are cut at its edges), so it is laid over the carpet once, not
     // repeated. It is 4:3 and the carpet 3:2, so use the middle 8/9 of its width; that keeps the dots
     // round at the image's own density (about 12 dot clusters across the carpet).
@@ -237,7 +247,8 @@ export function loadCarpetTexture(renderer, onLoad, onError) {
     tex.magFilter = THREE.LinearFilter;
     tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
     onLoad(tex);
-  }, undefined, onError);
+  };
+  img.src = carpetUrl;
 }
 
 // Suede for the side walls: a soft, low-contrast mottling (dark blotches with soft edges) over a fine

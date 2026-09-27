@@ -6,7 +6,7 @@ and an opaque upholstered armchair standing off-centre near the right wall.
 
 The sign and the landscape paintings on the side walls are not image files: `src/textures.js` draws
 them at load time onto `<canvas>` elements and uses them as Three.js textures. The carpet is the
-exception: it is a real image, `src/assets/carpet.webp`, imported through the build.
+exception: it is an SVG, `src/assets/carpet.svg`, rasterised onto a canvas at load.
 
 ## Running it
 
@@ -37,7 +37,7 @@ plain CSS for the page chrome. There are no CDN requests.
 | `src/scene.js` | Renderer, camera, background, lights, and the colour setup described below |
 | `src/room.js` | Floor, ceiling, side walls, BLEU NUIT wall, carpet and the two framed paintings |
 | `src/chair.js` | The armchair, its placement (`CHAIR_POSITION`, `CHAIR_YAW`) and contact shadow |
-| `src/textures.js` | The sign, glitter, painting and suede-wall texture generators, and the carpet loader |
+| `src/textures.js` | The sign, glitter, painting and suede-wall texture generators, and the carpet loader (SVG rasterised to a canvas) |
 | `src/letters.js` | The traced BLEU NUIT letter outlines |
 | `src/controls.js` | Orbit camera, FOV zoom, mouse and touch handling |
 | `src/ui.js` | Slider, buttons and hint behaviour |
@@ -86,8 +86,8 @@ are not loaded by the page.
 | File | What it is | Used to check |
 |---|---|---|
 | `reference/signage-bleu-nuit.png` | Photo of the real BLEU NUIT sign: purple glitter-filled block letters with a lighter violet outline, stacked BLEU over NUIT on near-black. 1600×1200. | `createBleuNuitTexture()` in `src/textures.js`, the back wall. The letter outlines in `src/letters.js` are traced from this photo |
-| `reference/carpet-pattern.png` | An earlier carpet photo: light periwinkle dots in diagonal clusters on a deep royal blue ground. 1448×1086. **Superseded** by `src/assets/carpet.webp` (see Recently closed). Kept for history. | Nothing now |
-| `reference/carpet-texture-source.png` | The carpet texture PAUL-ERIC supplied, lossless, 1448×1086, 2.7 MB. Not loaded by the page: `src/assets/carpet.webp` is encoded from it. Re-encode from this if the carpet ever needs to change. | Source for `carpet.webp` |
+| `reference/carpet-pattern.png` | An earlier carpet photo: light periwinkle dots in diagonal clusters on a deep royal blue ground. 1448×1086. **Superseded** by `src/assets/carpet.svg` (see Recently closed). Kept for history. | Nothing now |
+| `reference/carpet-texture-source.png` | The carpet texture PAUL-ERIC supplied, lossless, 1448×1086, 2.7 MB. Not loaded by the page: `src/assets/carpet.svg` was traced from it. | Source for `carpet.svg` |
 | `reference/tv-capture.jpg` | The original TV capture the whole project recreates: a corner view of the room from an oblique camera, sign wall on the left, painting wall on the right, an opaque lilac armchair near the right wall. 1206×880. | Chair placement, camera angle, the chair, the wall texture. Measurements are in `reference/capture-geometry.md` |
 | `reference/swatch-navy-dark.png` | Flat dark navy swatch, measured at about `#0f084f`. | Room surface colours |
 | `reference/swatch-indigo.png` | Flat indigo/violet swatch, measured at about `#261987`. | Room surface colours |
@@ -102,7 +102,7 @@ Vite fingerprints them into `docs/assets/` on build.
 
 | File | What it is |
 |---|---|
-| `src/assets/carpet.webp` | The floor carpet: light periwinkle ground (`#8790c6`) with royal-blue dots (`#2c38ac`), about 28% dot coverage. 1448×1086 (4:3), 218 KB. Not seamless, so it is used once and not tiled (see below). Encoded from `reference/carpet-texture-source.png`, the lossless 2.7 MB original. |
+| `src/assets/carpet.svg` | The floor carpet as a vector image: a periwinkle ground with a grain filter, and about 1,860 circles and ellipses for the royal-blue dots, in groups `dots` and `ghost-dots`. 1448×1086 (4:3), 141 KB (29 KB gzipped). Not seamless, so it is used once and not tiled (see below). Traced from `reference/carpet-texture-source.png`. Any SVG of the same 4:3 proportions with `width` and `height` set can be dropped in over it; see Carpet as SVG below. |
 
 ## Known gaps
 
@@ -175,10 +175,37 @@ several field-of-view settings.
   reproduced: the photo's slight 3D depth and glow around the letter edges, and the very bright
   pin-point sparkles, which are averaged away at the size the wall is shown.
 
-- **The carpet image went from 2.7 MB to 218 KB.** It was essentially the whole page weight next to a 137 KB
+- **The carpet image went from 2.7 MB to 218 KB** (a step that has since been superseded by the vector carpet below). It was essentially the whole page weight next to a 137 KB
   gzipped script. It is now a full-resolution (1448×1086) WebP at quality 80, encoded from the lossless
   original, which is kept as `reference/carpet-texture-source.png`. Against the original it has a mean
   absolute error of 3.1 of 255 (PSNR 35.8 dB); in the rendered room the carpet differs from the PNG
   version by under 1 of 255 on average. Full resolution was kept on purpose so it stays sharp on
   high-density screens; a 1024-wide version would be about 170 KB at visibly lower quality. WebP is
   supported by every current browser.
+
+- **The carpet is now a vector image.** Following the 2.7 MB to 218 KB WebP step, the carpet was redrawn as
+  `src/assets/carpet.svg` so it can be opened and edited in Illustrator. It is **141 KB (29 KB gzipped)**,
+  against 218 KB for the WebP, and it is drawn onto a 1448×1086 canvas at load (about 60 ms the first
+  time, 17 ms after, against about 16 ms to decode the WebP) and used as a texture as before.
+  Measured against the lossless source:
+
+  | | Dot coverage (source 28.13%) | Dot-mask overlap (IoU) | Mean colour (source 109,119,191) | Ground grain, fine to coarse (source 5.1 / 3.7 / 2.9 / 2.2) |
+  |---|---|---|---|---|
+  | WebP | 28.08% | 0.987 | 109,120,191 | 4.8 / 3.6 / 2.9 / 2.2 |
+  | SVG | 28.16% | 0.937 | 108,119,193 | 5.4 / 4.8 / 3.7 / 1.8 |
+
+  In the rendered room the SVG and WebP carpets differ by 2 to 3 of 255 on average (mostly grain), with
+  the same mean colour, and the two look the same at the size the carpet is shown. Up close, at the
+  texture's own resolution, the SVG is a little cleaner: it has one dot colour instead of the source's
+  slight per-dot tone variation, only nine of the soft "ghost" dots are drawn softly, dots cut by the
+  image edge become thin slivers, and the grain is a different random pattern with the same statistics.
+
+  How it was made: each dot in the source was fitted with an ellipse from its shape moments (touching
+  dots are split into circles), the radii scaled slightly so the rendered dot coverage matches the
+  source, and the ground grain is an `feTurbulence` filter tuned so its fine-to-coarse strength matches
+  the source's ground. **If it is redrawn in Illustrator**, export SVG with `width` and `height`
+  attributes on the root (any size with the 4:3 proportion of 1448×1086 works; set `RASTER_SCALE` in
+  `src/textures.js` to render it larger or smaller), keep the ground and dots visible, and replace
+  `src/assets/carpet.svg`, then `npm run build:pages`. SVG filters (the grain) are supported by every
+  current browser but are not something every editor round-trips, so keep the grain out of the file if
+  Illustrator does not preserve it.
