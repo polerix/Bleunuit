@@ -1,7 +1,7 @@
 import './style.css';
 import { createStage } from './scene.js';
 import { buildRoom } from './room.js';
-import { createTranslucentPurpleArmchair } from './chair.js';
+import { createArmchair } from './chair.js';
 import { createControls } from './controls.js';
 import { createUI } from './ui.js';
 
@@ -9,7 +9,7 @@ const container = document.getElementById('canvas-container');
 const { scene, camera, renderer } = createStage(container);
 
 buildRoom(scene, renderer);
-scene.add(createTranslucentPurpleArmchair());
+scene.add(createArmchair());
 
 const ui = createUI();
 const controls = createControls({
