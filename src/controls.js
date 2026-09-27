@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { HALF_SIZE } from './room.js';
 
 // Camera navigation: the camera orbits a target point on a sphere, and the field of view is the
 // "zoom". The camera backs away as the FOV narrows so the room stays about the same size on screen and
@@ -8,19 +9,53 @@ const BASE_RADIUS = 10.5;
 const MIN_FOV = 22;
 const MAX_FOV = 92;
 
-// The opening and reset view, recovered from the TV capture (reference/capture-geometry.md): a level
-// camera (pitch about 0, so the polar angle is 90 degrees), 44 degrees of vertical FOV, and an azimuth
-// 39 degrees to the left of straight-on, which puts the sign wall on the left and the painting wall
-// on the right with the corner between them. Azimuth is measured to about +/- 3 degrees.
+// How far the camera sits from its pivot at a given FOV: backing away as the FOV narrows keeps the
+// room about the same size on screen. The tan(fov/2) ratio holds object scale steady while the
+// perspective changes.
+function orbitRadius(fovDeg) {
+  const rad = THREE.MathUtils.degToRad;
+  return BASE_RADIUS * Math.tan(rad(BASE_FOV) / 2) / Math.tan(rad(fovDeg) / 2);
+}
+
+// The opening and reset view, recovered from the TV capture (reference/capture-geometry.md).
+// The capture's camera is level with 44 degrees of vertical FOV and looks 39.3 degrees to the right of
+// straight at the sign wall, and the wall corner stands at x = 751.6 of 1206 with its top and bottom at
+// y = 138 and 657 of 880 (horizon at the image's centre line). The orbit camera always looks at its pivot,
+// so those landmarks fix where the pivot has to be: solve for the camera position that puts the room's
+// back-right corner (HALF_SIZE, -HALF_SIZE) on those pixels, then place the pivot on the view axis one
+// orbit radius ahead of it. Nothing here is tuned by eye.
+const CAPTURE = { width: 1206, height: 880, cornerX: 751.6, cornerTopY: 138, cornerBottomY: 657, yawDeg: 39.3 };
+
+function captureView(fovDeg) {
+  const rad = THREE.MathUtils.degToRad;
+  const cy = CAPTURE.height / 2;
+  const f = cy / Math.tan(rad(fovDeg) / 2);                              // focal length in capture pixels
+  const depth = f * 2 * HALF_SIZE / (CAPTURE.cornerBottomY - CAPTURE.cornerTopY);   // camera to corner, along the view axis
+  const lateral = (CAPTURE.cornerX - CAPTURE.width / 2) / f * depth;     // corner's offset to the right of the axis
+  const eyeFromTop = HALF_SIZE - (cy - CAPTURE.cornerTopY) * depth / f;       // the corner's top and bottom
+  const eyeFromBottom = (CAPTURE.cornerBottomY - cy) * depth / f - HALF_SIZE;  // each give the eye height
+  const eyeY = (eyeFromTop + eyeFromBottom) / 2;
+  const yaw = rad(CAPTURE.yawDeg);
+  const fw = new THREE.Vector3(Math.sin(yaw), 0, -Math.cos(yaw));       // view direction (X, Z)
+  const rt = new THREE.Vector3(Math.cos(yaw), 0, Math.sin(yaw));        // screen-right direction
+  const camera = new THREE.Vector3(HALF_SIZE, eyeY, -HALF_SIZE).addScaledVector(fw, -depth).addScaledVector(rt, -lateral);
+  const target = camera.clone().addScaledVector(fw, orbitRadius(fovDeg));
+  return { target, theta: -yaw };
+}
+
+const OPENING_FOV = 44;
+const OPENING = captureView(OPENING_FOV);
+
 export const DEFAULT_VIEW = {
-  fov: 44,
-  theta: -THREE.MathUtils.degToRad(39.3),
-  phi: Math.PI * 0.5
+  fov: OPENING_FOV,
+  theta: OPENING.theta,
+  phi: Math.PI * 0.5,          // level camera
+  target: OPENING.target       // the orbit pivot, off the room's centre
 };
 const HOME_PHI = DEFAULT_VIEW.phi;
 
 export function createControls({ camera, dom, onFovChange, onAutoRotateChange }) {
-  const targetPoint = new THREE.Vector3(0, 0, 0);
+  const targetPoint = DEFAULT_VIEW.target.clone();
 
   let currentFov = DEFAULT_VIEW.fov;
   const spherical = {
@@ -41,11 +76,7 @@ export function createControls({ camera, dom, onFovChange, onAutoRotateChange })
 
     // When FOV decreases (flatter perspective), back the camera up to compensate framing.
     // The tan(fov/2) ratio keeps object scale perceptually stable while altering perspective depth.
-    const fovRad = THREE.MathUtils.degToRad(currentFov);
-    const baseFovRad = THREE.MathUtils.degToRad(BASE_FOV);
-    const distRatio = Math.tan(baseFovRad / 2) / Math.tan(fovRad / 2);
-
-    const effectiveRadius = BASE_RADIUS * distRatio;
+    const effectiveRadius = orbitRadius(currentFov);
 
     camera.fov = currentFov;
     camera.updateProjectionMatrix();

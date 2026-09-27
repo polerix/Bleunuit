@@ -68,12 +68,22 @@ random per load.
   as the FOV narrows so the room stays about the same size on screen, and only the perspective
   changes, from wide-angle (92°) to flat/telephoto (22°). The label beside the slider reads Wide
   Angle, Normal, Isometric Feel or Flat / Tele.
-- The opening view, and **Reset View**, is the angle of the TV capture (`reference/capture-geometry.md`):
-  44° FOV, a level camera, and 39° to the left of straight-on, so the sign wall is on the left, the
-  painting wall on the right and the corner between them. Note that the room orbits around its centre,
-  whereas the capture's camera was aimed a little left of it, so the corner sits a little nearer the
-  middle of the frame than in the capture. A painting on a wall is hidden while the camera is outside
-  that wall, so it does not float in mid-air.
+- The opening view, and **Reset View**, is the angle and framing of the TV capture
+  (`reference/capture-geometry.md`): 44° FOV, a level camera, 39.3° to the left of straight-on, so the
+  sign wall is on the left, the painting wall on the right and the corner between them at 62% of the
+  frame width. The camera orbits a pivot at **(-1.00, -0.82, -2.19)** (1.0 left of and 2.2 behind the room
+  centre, at the capture's eye height), not the room centre. That point is solved in `captureView()` in
+  `src/controls.js` from the capture's wall corner (x = 751.6 of 1206, top and bottom at y = 138 and 657
+  of 880) and the room's back-right corner, so the corner lands where it does in the capture (measured
+  in the render: x = 750.8, top 136, bottom 712 against the capture's 751.2, 133 and 708). Because the pivot is off-centre the
+  orbit swings around that point, and the camera's distance from it (15 at the opening FOV) still scales
+  with FOV as before. The room's walls now match the capture's size; the painting, sign, rug and chair are
+  still drawn smaller than in the capture (the painting is about 30% shorter), which is object scale,
+  not zoom.
+- Single-sided surfaces (side walls, sign wall, floor, ceiling) vanish when seen from behind, so what is
+  attached to them follows the same rule: a painting is hidden while the camera is outside its wall, and
+  the chair is hidden while the camera is below the floor. Checked at every combination of the orbit
+  clamps (azimuth ±117°, elevation 45° to 108°) at 22°, 44° and 92°.
 - Rotation is clamped: about ±117° horizontally from the front, and a limited band of elevation.
 - Dragging or touching the scene switches Auto Orbit off. **Reset View** also switches it off.
 - The gesture hint at the bottom fades after 6 seconds.
