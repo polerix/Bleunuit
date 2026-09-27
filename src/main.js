@@ -29,12 +29,11 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-const start = performance.now();
-let last = start;
+let last = performance.now();
 
 function animate(now) {
   requestAnimationFrame(animate);
-  controls.tick((now - last) / 1000, (now - start) / 1000);
+  controls.tick((now - last) / 1000);
   room.update(camera);
   // The floor is single-sided, so from below it vanishes; the chair would then hang in mid-air
   chair.visible = camera.position.y > -HALF_SIZE;

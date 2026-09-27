@@ -54,6 +54,23 @@ export const DEFAULT_VIEW = {
 };
 const HOME_PHI = DEFAULT_VIEW.phi;
 
+// Auto Orbit: a slow, eased side-to-side sweep of the azimuth (not a continuous one-way spin), between
+// bounds well inside the drag clamps (+/- 117 degrees) so it never approaches them. A plain sine wave
+// gives the easing for free: its speed is zero exactly at the two bounds and fastest through the
+// middle, so the sweep glides to a stop and reverses instead of snapping.
+//
+// Elevation does not sway. The room's default elevation was solved to be exactly level, to match the
+// capture's camera (reference/capture-geometry.md); swaying it would undo that on every cycle. A level
+// camera also keeps the sweep's eye height constant, which is what keeps the chair (hidden below the
+// floor's single-sided plane, see main.js) always in view through the whole sweep -- swaying elevation
+// would have reopened that edge case.
+const SWEEP_CENTER = 0;                                  // radians: straight at the sign wall
+const SWEEP_AMPLITUDE = THREE.MathUtils.degToRad(80);     // each bound is 37 degrees inside the +/-117 clamp
+const SWEEP_PERIOD = 50;                                  // seconds for one full there-and-back cycle
+// Phase at which the sweep starts, chosen so it begins exactly at the default view's azimuth and its
+// first move is toward the centre (away from the nearer bound), rather than snapping to a new position.
+const SWEEP_START_PHASE = Math.asin(THREE.MathUtils.clamp((DEFAULT_VIEW.theta - SWEEP_CENTER) / SWEEP_AMPLITUDE, -1, 1));
+
 export function createControls({ camera, dom, onFovChange, onAutoRotateChange }) {
   const targetPoint = DEFAULT_VIEW.target.clone();
 
@@ -63,6 +80,8 @@ export function createControls({ camera, dom, onFovChange, onAutoRotateChange })
     theta: DEFAULT_VIEW.theta,   // azimuth horizontal angle (radians)
     phi: HOME_PHI      // polar elevation angle (radians)
   };
+
+  let sweepPhase = SWEEP_START_PHASE;
 
   let isDragging = false;
   let prevMousePos = { x: 0, y: 0 };
@@ -189,11 +208,12 @@ export function createControls({ camera, dom, onFovChange, onAutoRotateChange })
       onFovChange(currentFov);
       update();
     },
-    // Called every frame: slow orbit with a gentle vertical sway while auto-rotate is on
-    tick(delta, elapsed) {
+    // Called every frame: while auto-rotate is on, advance the sweep's phase and set the azimuth from
+    // it. Paused (not reset) when auto-rotate is off, so toggling it back on continues the same sweep.
+    tick(delta) {
       if (!autoRotate) return;
-      spherical.theta += delta * 0.25;
-      spherical.phi = HOME_PHI + Math.sin(elapsed * 0.6) * 0.05;
+      sweepPhase += delta * (2 * Math.PI / SWEEP_PERIOD);
+      spherical.theta = SWEEP_CENTER + SWEEP_AMPLITUDE * Math.sin(sweepPhase);
       update();
     }
   };

@@ -62,7 +62,7 @@ random per load.
 | Change field of view (22°–92°) | Scroll wheel | Pinch (two fingers) |
 | Change field of view | Vertical slider, left edge | Vertical slider, left edge |
 | Back to the default view | **Reset View** button | **Reset View** button |
-| Slow orbit around the room | **Auto Orbit** button (becomes **Pause Orbit**) | same |
+| Sweep the room side to side | **Auto Orbit** button (becomes **Pause Orbit**) | same |
 
 - Scroll and pinch change the camera's **field of view**, not a plain zoom. The camera moves back
   as the FOV narrows so the room stays about the same size on screen, and only the perspective
@@ -85,6 +85,14 @@ random per load.
   the chair is hidden while the camera is below the floor. Checked at every combination of the orbit
   clamps (azimuth ±117°, elevation 45° to 108°) at 22°, 44° and 92°.
 - Rotation is clamped: about ±117° horizontally from the front, and a limited band of elevation.
+- **Auto Orbit is a side-to-side sweep, not a one-way spin.** The azimuth eases between two bounds 80°
+  each side of straight-at-the-sign-wall (37° inside the ±117° drag clamp) on a 50-second round trip. It
+  is a plain sine wave (`src/controls.js`), which is what gives the easing: a sine's speed is zero exactly
+  at the two bounds, so it glides to a stop and reverses there instead of snapping. It starts at the
+  opening view's azimuth and moves toward the room's centre first. Elevation does not sway, on purpose:
+  the opening elevation was solved to be exactly level to match the capture, and swaying it would undo
+  that every cycle; staying level also keeps the eye height constant, which is what keeps the chair (see
+  above) in view through the whole sweep.
 - Dragging or touching the scene switches Auto Orbit off. **Reset View** also switches it off.
 - The gesture hint at the bottom fades after 6 seconds.
 
