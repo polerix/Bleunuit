@@ -66,8 +66,14 @@ random per load.
 
 - Scroll and pinch change the camera's **field of view**, not a plain zoom. The camera moves back
   as the FOV narrows so the room stays about the same size on screen, and only the perspective
-  changes, from wide-angle (92°) to flat/telephoto (22°). The default is 60°. The label beside the
-  slider reads Wide Angle, Normal, Isometric Feel or Flat / Tele.
+  changes, from wide-angle (92°) to flat/telephoto (22°). The label beside the slider reads Wide
+  Angle, Normal, Isometric Feel or Flat / Tele.
+- The opening view, and **Reset View**, is the angle of the TV capture (`reference/capture-geometry.md`):
+  44° FOV, a level camera, and 39° to the left of straight-on, so the sign wall is on the left, the
+  painting wall on the right and the corner between them. Note that the room orbits around its centre,
+  whereas the capture's camera was aimed a little left of it, so the corner sits a little nearer the
+  middle of the frame than in the capture. A painting on a wall is hidden while the camera is outside
+  that wall, so it does not float in mid-air.
 - Rotation is clamped: about ±117° horizontally from the front, and a limited band of elevation.
 - Dragging or touching the scene switches Auto Orbit off. **Reset View** also switches it off.
 - The gesture hint at the bottom fades after 6 seconds.

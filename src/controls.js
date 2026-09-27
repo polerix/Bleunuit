@@ -3,19 +3,29 @@ import * as THREE from 'three';
 // Camera navigation: the camera orbits a target point on a sphere, and the field of view is the
 // "zoom". The camera backs away as the FOV narrows so the room stays about the same size on screen and
 // only the perspective changes, from wide angle (92 deg) to flat/telephoto (22 deg).
-const BASE_FOV = 60;
+const BASE_FOV = 60;        // the FOV at which BASE_RADIUS frames the room
 const BASE_RADIUS = 10.5;
 const MIN_FOV = 22;
 const MAX_FOV = 92;
-const HOME_PHI = Math.PI * 0.48;
+
+// The opening and reset view, recovered from the TV capture (reference/capture-geometry.md): a level
+// camera (pitch about 0, so the polar angle is 90 degrees), 44 degrees of vertical FOV, and an azimuth
+// 39 degrees to the left of straight-on, which puts the sign wall on the left and the painting wall
+// on the right with the corner between them. Azimuth is measured to about +/- 3 degrees.
+export const DEFAULT_VIEW = {
+  fov: 44,
+  theta: -THREE.MathUtils.degToRad(39.3),
+  phi: Math.PI * 0.5
+};
+const HOME_PHI = DEFAULT_VIEW.phi;
 
 export function createControls({ camera, dom, onFovChange, onAutoRotateChange }) {
   const targetPoint = new THREE.Vector3(0, 0, 0);
 
-  let currentFov = BASE_FOV;
+  let currentFov = DEFAULT_VIEW.fov;
   const spherical = {
     radius: BASE_RADIUS,
-    theta: 0,          // azimuth horizontal angle (radians)
+    theta: DEFAULT_VIEW.theta,   // azimuth horizontal angle (radians)
     phi: HOME_PHI      // polar elevation angle (radians)
   };
 
@@ -141,8 +151,8 @@ export function createControls({ camera, dom, onFovChange, onAutoRotateChange })
       setAutoRotate(!autoRotate);
     },
     reset() {
-      currentFov = BASE_FOV;
-      spherical.theta = 0;
+      currentFov = DEFAULT_VIEW.fov;
+      spherical.theta = DEFAULT_VIEW.theta;
       spherical.phi = HOME_PHI;
       setAutoRotate(false);
       onFovChange(currentFov);

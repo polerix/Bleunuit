@@ -154,4 +154,13 @@ export function buildRoom(scene, renderer) {
   frameGroup.add(rightArt);
 
   scene.add(frameGroup);
+
+  // The side walls are single-sided, so from outside the room they are invisible; a painting hung on
+  // one would then float in mid-air. Show each painting only while the camera is inside its wall.
+  return {
+    update(camera) {
+      leftArt.visible = camera.position.x > -HALF_SIZE;
+      rightArt.visible = camera.position.x < HALF_SIZE;
+    }
+  };
 }
