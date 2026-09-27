@@ -1,7 +1,7 @@
 # Bleu Nuit
 
 An interactive 3D room, "Bleu Nuit Gallery". A 10-unit cubic room with navy floor and ceiling,
-blue side walls, a glitter-lettered BLEU NUIT sign on the back wall, a dotted carpet on the floor,
+suede-textured blue side walls, a glitter-lettered BLEU NUIT sign on the back wall, a dotted carpet on the floor,
 and an opaque upholstered armchair standing off-centre near the right wall.
 
 The sign and the landscape paintings on the side walls are not image files: `src/textures.js` draws
@@ -37,7 +37,7 @@ plain CSS for the page chrome. There are no CDN requests.
 | `src/scene.js` | Renderer, camera, background, lights, and the colour setup described below |
 | `src/room.js` | Floor, ceiling, side walls, BLEU NUIT wall, carpet and the two framed paintings |
 | `src/chair.js` | The armchair, its placement (`CHAIR_POSITION`, `CHAIR_YAW`) and contact shadow |
-| `src/textures.js` | The sign, glitter and painting texture generators, and the carpet loader |
+| `src/textures.js` | The sign, glitter, painting and suede-wall texture generators, and the carpet loader |
 | `src/letters.js` | The traced BLEU NUIT letter outlines |
 | `src/controls.js` | Orbit camera, FOV zoom, mouse and touch handling |
 | `src/ui.js` | Slider, buttons and hint behaviour |

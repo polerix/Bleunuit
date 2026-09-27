@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createPaintingTexture, createBleuNuitTexture, loadCarpetTexture } from './textures.js';
+import { createPaintingTexture, createBleuNuitTexture, createSuedeTexture, loadCarpetTexture, SUEDE_MEAN } from './textures.js';
 
 // Room dimensions (cubic room)
 export const ROOM_SIZE = 10;
@@ -14,8 +14,11 @@ export function buildRoom(scene, renderer) {
     metalness: 0
   });
 
+  // Side walls are suede: the texture is a brightness multiplier around SUEDE_MEAN, so the colour is
+  // scaled up by the same amount to keep the wall's overall brightness unchanged.
   const blueSideWallMat = new THREE.MeshStandardMaterial({
-    color: 0x191475,
+    color: new THREE.Color(0x191475).multiplyScalar(1 / SUEDE_MEAN),
+    map: createSuedeTexture(renderer),
     roughness: 0.5,
     metalness: 0
   });

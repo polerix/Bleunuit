@@ -239,3 +239,62 @@ export function loadCarpetTexture(renderer, onLoad, onError) {
     onLoad(tex);
   }, undefined, onError);
 }
+
+// Suede for the side walls: a soft, low-contrast mottling (dark blotches with soft edges) over a fine
+// grain, as in the capture, where the wall varies about +/- 12% in brightness (about 7% in blotches, 4%
+// in grain). It is a multiplier on the wall colour, so it is stored around SUEDE_MEAN (a texel can't be
+// brighter than 1) and the wall colour is scaled up by 1 / SUEDE_MEAN to keep the wall's overall
+// brightness where it was. All the noise wraps, so the texture repeats without seams.
+export const SUEDE_MEAN = 0.92;
+
+export function createSuedeTexture(renderer, repeat = 3) {
+  const size = 512;
+  const n = size * size;
+
+  // Periodic value noise on a cell grid that wraps at the texture edge
+  const wrapNoise = (cell) => {
+    const g = Math.ceil(size / cell);
+    const grid = new Float32Array(g * g);
+    for (let i = 0; i < grid.length; i++) grid[i] = Math.random();
+    const a = new Float32Array(n);
+    for (let y = 0; y < size; y++) {
+      const fy = y / cell, iy = Math.floor(fy); let ty = fy - iy; ty = ty * ty * (3 - 2 * ty);
+      const y0 = iy % g, y1 = (iy + 1) % g;
+      for (let x = 0; x < size; x++) {
+        const fx = x / cell, ix = Math.floor(fx); let tx = fx - ix; tx = tx * tx * (3 - 2 * tx);
+        const x0 = ix % g, x1 = (ix + 1) % g;
+        a[y * size + x] = (grid[y0 * g + x0] * (1 - tx) + grid[y0 * g + x1] * tx) * (1 - ty)
+                        + (grid[y1 * g + x0] * (1 - tx) + grid[y1 * g + x1] * tx) * ty;
+      }
+    }
+    // zero mean, unit variance
+    let m = 0; for (let i = 0; i < n; i++) m += a[i]; m /= n;
+    let v = 0; for (let i = 0; i < n; i++) v += (a[i] - m) * (a[i] - m);
+    const k = 1 / Math.sqrt(v / n || 1);
+    for (let i = 0; i < n; i++) a[i] = (a[i] - m) * k;
+    return a;
+  };
+
+  const big = wrapNoise(64);      // soft blotches, about 0.4 wall units across
+  const mid = wrapNoise(24);
+  const grain = wrapNoise(2);     // fine nap
+
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(size, size);
+  const d = img.data;
+  for (let i = 0; i < n; i++) {
+    const delta = 0.05 * big[i] + 0.035 * mid[i] + 0.04 * grain[i] + 0.02 * (Math.random() - 0.5) * 3.46;
+    const v = Math.max(0, Math.min(255, 255 * SUEDE_MEAN * (1 + delta)));
+    d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v;
+    d[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(repeat, repeat);
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return tex;
+}
