@@ -4,3 +4,8 @@ dist/
 *.log
 .env
 .env.*
+
+# Compliance hygiene
+.venv/
+venv/
+__pycache__/

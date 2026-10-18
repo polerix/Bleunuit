@@ -250,3 +250,16 @@ several field-of-view settings.
   `src/assets/carpet.svg`, then `npm run build:pages`. SVG filters (the grain) are supported by every
   current browser but are not something every editor round-trips, so keep the grain out of the file if
   Illustrator does not preserve it.
+
+## Deployment & Repository Status
+
+- **Standardized Name**: `Bleunuit`
+- **Remote Origin**: `https://github.com/polerix/Bleunuit.git`
+- **License Level**: `MIT` ([`LICENSE`](LICENSE))
+- **Security Policy**: [`SECURITY.md`](SECURITY.md)
+- **GitHub Actions**: Static / Manual
+- **Last Compliance Audit**: `2026-10-18`
+
+### GitHub CleanUp Log
+- **Unused / Archive / Cache Items Moved to `/Volumes/Clay/GitHubCleanUp/Bleunuit/`**: 1 item(s) (1478 files, 46.23 MB)
+  - `node_modules` — Local dependency/build cache (node_modules) (1478 file(s), 46.23 MB)
